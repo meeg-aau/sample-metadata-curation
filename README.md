@@ -46,11 +46,12 @@ curate-sample --sample_json '{"accession": "SAMN...", "characteristics": {...}}'
 
 ### As a Library
 
-You can also use the curation logic in your own Python scripts:
+You can also use the curation logic in your own Python scripts. The `curate_biosample` function is flexible and accepts a dictionary, a JSON string, or a path to a JSON file:
 
 ```python
 from sample_metadata_curation.bin.curate import curate_biosample
 
+# Option 1: Use a dictionary
 sample_data = {
     "accession": "SAMN39868869",
     "characteristics": {
@@ -58,8 +59,15 @@ sample_data = {
         "lat_lon": [{"text": "55.62115 N 8.2849 E"}]
     }
 }
-
 result = curate_biosample(sample_data)
+
+# Option 2: Use a JSON string
+json_string = '{"accession": "SAMN39868869", ...}'
+result = curate_biosample(json_string)
+
+# Option 3: Use a path to a JSON file
+result = curate_biosample("path/to/sample.json")
+
 print(result)
 # Output: {'accession': 'SAMN39868869', 'location': 'Denmark', 'latitude': 55.62115, 'longitude': 8.2849}
 ```

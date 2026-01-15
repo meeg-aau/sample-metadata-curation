@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 from typing import Any, Dict, List, Optional
@@ -6,6 +7,14 @@ from typing import Any, Dict, List, Optional
 from .constants import LOCATION_KEYS, MISSING_VALUES
 from .sample_parser import load_json, parse_arguments
 
+"""
+regex for lat lon e.g.
+match = 55.62115 N 8.2849 E
+lat = 55.62115
+lat_dir = N
+lon = 8.2849
+lon_dir = E
+"""
 LATLON_COORD_RE = re.compile(
     r"""
     ^\s*
@@ -32,7 +41,7 @@ class SampleCurator:
     @staticmethod
     def normalize_key(key: str) -> str:
         """
-        Convert a characteristic key into a consistent snake_case key.
+        simplify special characters in key names
         """
         s = str(key).strip().lower()
         s = re.sub(r"[^a-z0-9]+", "_", s)  # non-alphanumerics -> underscores
@@ -40,16 +49,17 @@ class SampleCurator:
         s = s.strip("_")  # trim leading/trailing underscores
         return s
 
-    def flatten_characteristics(
-        self, sample_json: Dict[str, Any]
-    ) -> Dict[str, Optional[str]]:
+    def standardise_keys(self, sample_json: Dict[str, Any]) -> Dict[str, Optional[str]]:
         """
-        Convert BioSamples 'characteristics' into a simple dict:
-          normalized_key -> first item's 'text'
+        Convert BioSamples JSON sections 'characteristics' and 'structured data'
+        into a simple dict:
+          normalized_key -> first item's 'text' (for characteristics)
+                            or 'value' (for structured data)
         """
-        chars = sample_json.get("characteristics") or {}
-        out: Dict[str, Optional[str]] = {}
+        out = {}
 
+        # 1. Process characteristics
+        chars = sample_json.get("characteristics") or {}
         for key, items in chars.items():
             norm_key = self.normalize_key(key)
             if isinstance(items, list) and items:
@@ -59,6 +69,19 @@ class SampleCurator:
             else:
                 out[norm_key] = None
 
+        # 2. Process structuredData
+        structured_data = sample_json.get("structuredData") or []
+        for entry in structured_data:
+            content_list = entry.get("content") or []
+            for content in content_list:
+                for key, val_obj in content.items():
+                    norm_key = self.normalize_key(key)
+                    if isinstance(val_obj, dict):
+                        val = val_obj.get("value")
+                        if val is not None:
+                            out[norm_key] = str(val)
+                    elif val_obj is not None:
+                        out[norm_key] = str(val_obj)
         return out
 
     @staticmethod
@@ -78,6 +101,7 @@ class SampleCurator:
 
         s = str(value).strip()
         m = re.match(r"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([NSEW])?\s*$", s, re.IGNORECASE)
+        print(m.groups())
         if not m:
             return None
         num = float(m.group(1).replace(",", "."))
@@ -123,7 +147,7 @@ class SampleCurator:
         Takes a BioSamples JSON dictionary and returns a cleaned dictionary
         with extracted location, latitude, and longitude.
         """
-        flat_attrs = self.flatten_characteristics(sample_json)
+        cleaned_dict = self.standardise_keys(sample_json)
 
         result = {
             "accession": sample_json.get("accession"),
@@ -132,11 +156,11 @@ class SampleCurator:
             "longitude": None,
         }
 
-        loc_key = self._first_present_key(flat_attrs, LOCATION_KEYS["location"])
+        loc_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["location"])
         if loc_key:
-            is_location = self.sanity_check_location(flat_attrs[loc_key])
+            is_location = self.sanity_check_location(cleaned_dict[loc_key])
             if is_location:
-                result["location"] = flat_attrs[loc_key]
+                result["location"] = cleaned_dict[loc_key]
             else:
                 result["location"] = None
 
@@ -144,9 +168,9 @@ class SampleCurator:
         lon = None
 
         # try combined lat_lon
-        lat_lon_key = self._first_present_key(flat_attrs, LOCATION_KEYS["lat_lon"])
+        lat_lon_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["lat_lon"])
         if lat_lon_key:
-            lat_lon_str = str(flat_attrs[lat_lon_key]).strip()
+            lat_lon_str = str(cleaned_dict[lat_lon_key]).strip()
             m = LATLON_COORD_RE.match(lat_lon_str)
             if m:
                 lat = self._apply_direction(
@@ -158,16 +182,16 @@ class SampleCurator:
 
         # Individual fields if not found yet
         if lat is None:
-            lat_key = self._first_present_key(flat_attrs, LOCATION_KEYS["lat"])
+            lat_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["lat"])
             if lat_key:
-                lat = self._parse_single_coord(flat_attrs[lat_key])
+                lat = self._parse_single_coord(cleaned_dict[lat_key])
 
         if lon is None:
-            lon_key = self._first_present_key(flat_attrs, LOCATION_KEYS["lon"])
+            lon_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["lon"])
             if lon_key:
-                lon = self._parse_single_coord(flat_attrs[lon_key])
+                lon = self._parse_single_coord(cleaned_dict[lon_key])
 
-        # Validate ranges and try switching if invalid
+        # Validate ranges and try switching if invalid otherwise set both as None
         if lat is not None and lon is not None:
             is_valid = abs(lat) <= 90 and abs(lon) <= 180
             if is_valid:
@@ -181,20 +205,39 @@ class SampleCurator:
                 else:
                     result["latitude"] = None
                     result["longitude"] = None
+
+        for key, value in cleaned_dict.items():
+            if (
+                key not in LOCATION_KEYS["lat_lon"]
+                and key not in LOCATION_KEYS["location"]
+                and key not in LOCATION_KEYS["lat"]
+                and key not in LOCATION_KEYS["lon"]
+            ):
+                result[key] = value
         return result
 
 
-def curate_biosample(sample_json: Dict[str, Any]) -> Dict[str, Any]:
-    """Helper function to curate a single biosample."""
+def curate_biosample(input_data: Any) -> Dict[str, Any]:
+    """
+    Helper function to curate a single biosample.
+    Input can be a BioSamples JSON dict, a JSON string, or a path to a JSON file.
+    """
+    if isinstance(input_data, (str, os.PathLike)):
+        sample_json = load_json(str(input_data))
+    else:
+        sample_json = input_data
+
+    if not sample_json:
+        return {}
+
     curator = SampleCurator()
     return curator.curate_sample(sample_json)
 
 
 def main():
     args = parse_arguments()
-    sample_json = load_json(args.sample_json)
-    if sample_json:
-        result = curate_biosample(sample_json)
+    result = curate_biosample(args.sample_json)
+    if result:
         print(json.dumps(result, indent=2))
     else:
         sys.exit(1)

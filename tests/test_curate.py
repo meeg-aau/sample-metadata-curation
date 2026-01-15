@@ -3,32 +3,26 @@ import pytest
 
 from sample_metadata_curation.bin.curate import curate_biosample
 
-SINGLE_SAMPLE_JSON = {
-    "accession": "SAMN39868869",
-    "characteristics": {
-        "collection_date": [{"text": "2021-06-23", "tag": "attribute"}],
-        "geo_loc_name": [{"text": "Denmark", "tag": "attribute"}],
-        "lat_lon": [{"text": "55.62115 N 8.2849 E", "tag": "attribute"}],
-        "NCBI submission package": [{"text": "Metagenome.environmental.1.0"}],
-        "INSDC center name": [{"text": "Aalborg University"}],
-        "description": [{"text": "NA"}],
-    },
-}
+FIXTURE_PATH = "tests/fixtures/test.json"
 
 
 def test_curate_biosample_full():
-    result = curate_biosample(SINGLE_SAMPLE_JSON)
+    result = curate_biosample(FIXTURE_PATH)
     assert result["accession"] == "SAMN39868869"
     assert result["location"] == "Denmark"
     assert result["latitude"] == 55.62115
     assert result["longitude"] == 8.2849
+
+    assert result["01_mfd_sampletype"] == "Soil"
+    assert result["project_identifier"] == "P08_1"
+    assert result["extraction_method"] == "PowerSoil-Pro-HT"
 
 
 @pytest.mark.parametrize(
     "lat_lon_str, expected_lat, expected_lon",
     [
         ("55.62115 N 8.2849 E", 55.62115, 8.2849),
-        ("34.0522 N 118.2437 W", 34.0522, -118.2437),
+        ("34.0522N 118.2437W", 34.0522, -118.2437),
         ("12.345 S 45.678 E", -12.345, 45.678),
         ("55.62115 8.2849", 55.62115, 8.2849),
         ("-33.8688 151.2093", -33.8688, 151.2093),
@@ -58,7 +52,7 @@ def test_parse_separate_lat_lon():
     "lat_lon_str",
     [
         "NA",
-        "nor provided",
+        "not provided",
         "unknown",
         "55 N 200 E",
         "",
