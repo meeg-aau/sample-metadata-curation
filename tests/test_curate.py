@@ -9,13 +9,16 @@ FIXTURE_PATH = "tests/fixtures/test.json"
 def test_curate_biosample_full():
     result = curate_biosample(FIXTURE_PATH)
     assert result["accession"] == "SAMN39868869"
-    assert result["location"] == "Denmark"
+    assert result["region"] == "Denmark"
     assert result["latitude"] == 55.62115
     assert result["longitude"] == 8.2849
 
     assert result["01_mfd_sampletype"] == "Soil"
     assert result["project_identifier"] == "P08_1"
     assert result["extraction_method"] == "PowerSoil-Pro-HT"
+
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match"
 
 
 @pytest.mark.parametrize(
@@ -76,7 +79,7 @@ def test_parse_lat_lon_switched():
 
 
 @pytest.mark.parametrize(
-    "location_str",
+    "region_str",
     [
         "not provided",
         "NA",
@@ -85,7 +88,90 @@ def test_parse_lat_lon_switched():
         "a1b2c3d4",
     ],
 )
-def test_invalid_location_returns_none(location_str):
-    sample = {"characteristics": {"geo_loc_name": [{"text": location_str}]}}
+def test_invalid_region_returns_none(region_str):
+    sample = {"characteristics": {"geo_loc_name": [{"text": region_str}]}}
     result = curate_biosample(sample)
-    assert result["location"] is None
+    assert result["region"] is None
+
+
+@pytest.mark.parametrize(
+    "location_str, lat_lon_str, expected_region, expected_locality, "
+    "expected_geo_match, expected_geo_match_reason",
+    [
+        (
+            "Denmark",
+            "55.62115 N 8.2849 E",
+            "Denmark",
+            None,
+            "PASS",
+            "match",
+        ),  # Matching
+        (
+            "India",
+            "55.62115 N 8.2849 E",
+            None,
+            None,
+            "FAIL",
+            "country_mismatch",
+        ),  # Non-matching
+        (
+            "United States",
+            "40.7128 N 74.0060 W",
+            "United States",
+            None,
+            "PASS",
+            "match",
+        ),  # Matching
+        (
+            "Denmark",
+            "40.7128 N 74.0060 W",
+            None,
+            None,
+            "FAIL",
+            "country_mismatch",
+        ),  # Non-matching
+        (
+            "United Kingdom: England",
+            "51.5074 N 0.1278 W",
+            "United Kingdom",
+            "England",
+            "PASS",
+            "match",
+        ),  # Matching with locality
+        (
+            "United States Minor Outlying Islands:Baker Island",
+            "0.1947, -176.4794",
+            "United States Minor Outlying Islands",
+            "Baker Island",
+            "WARN",
+            "reported_cc_not_supported_by_reverse_geocoder",
+        ),
+        (
+            "Atlantic Ocean:Charlie Gibbs Fracture Zone",
+            "52.45, -35.08",
+            "Atlantic Ocean",
+            "Charlie Gibbs Fracture Zone",
+            "PASS",
+            "ocean_or_sea",
+        ),
+    ],
+)
+def test_coordinate_region_match(
+    location_str,
+    lat_lon_str,
+    expected_region,
+    expected_locality,
+    expected_geo_match,
+    expected_geo_match_reason,
+):
+    sample = {
+        "characteristics": {
+            "geo_loc_name": [{"text": location_str}],
+            "lat_lon": [{"text": lat_lon_str}],
+        }
+    }
+    result = curate_biosample(sample)
+    assert result["region"] == expected_region
+    assert result["locality"] == expected_locality
+    assert result["geo_check_status"] == expected_geo_match
+    assert result["geo_check_reason"] == expected_geo_match_reason

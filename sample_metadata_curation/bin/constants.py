@@ -10,6 +10,14 @@ MISSING_VALUES = {
     "null",
     "na",
     "",
+    "missing: control sample",
+    "missing: data agreement established pre-2023",
+    "missing: endangered species",
+    "missing: human-identifiable",
+    "missing: lab stock",
+    "missing: sample group",
+    "missing: synthetic construct",
+    "missing: third party data",
 }
 
 LOCATION_KEYS = {
@@ -20,7 +28,6 @@ LOCATION_KEYS = {
         "geo_loc_name",
         "geographic_location_country_and_or_sea",
         "geographic_location_country_and_or_sea_region",
-        "geographic_location_region_and_locality",
         "marine_region",
     ],
 }
@@ -74,3 +81,45 @@ CHECKLIST = [
     "ncbi_submission_package",
     "biosamplemodel",
 ]
+
+MISSING_COUNTRY_MAPPING = {
+    "Bahamas": "Bahamas, The",
+    "Gambia": "Gambia, The",
+    "Cape Verde": "Cabo Verde",
+    "Czech Republic": "Czechia",
+    "Democratic Republic of the Congo": "Congo, Democratic Republic of the",
+    "Republic of the Congo": "Congo, Republic of the",
+    "North Korea": "Korea, North",
+    "South Korea": "Korea, South",
+    "Turkey": "Turkey (Turkiye)",
+    "Viet Nam": "Vietnam",
+    "USA": "United States",
+    "Myanmar": "Burma",
+    "Saint Helena": "Saint Helena, Ascension, and Tristan da Cunha",
+    "Cocos Islands": "Cocos (Keeling) Islands",
+    "US Minor Outlying Islands": "United States Minor Outlying Islands",
+    # INSDC contains State of Palestine but is not in ISO codes
+    "State of Palestine": "West Bank",
+    # Map French scattered islands to France
+    "Bassas da India": "France",
+    "Europa Island": "France",
+    "Glorioso Islands": "France",
+    "Juan de Nova Island": "France",
+    "Tromelin Island": "France",
+}
+
+# Islands in INSDC list which are not ISO countries
+NON_COUNTRIES = {
+    "Borneo",
+    "Line Islands",
+    "Kerguelen Archipelago",
+    "Paracel Islands",
+    "Spratly Islands",
+}
+
+# Places that are "countries" in INSDC but not reverse_geocoder
+REVERSE_GEOCODER_MISSING_CC = {
+    "UM",  # United States Minor Outlying Islands
+    "BV",  # Bouvet Island
+    "HM",  # Heard Island and McDonald Islands
+}

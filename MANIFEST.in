@@ -1,0 +1,3 @@
+recursive-include resources *
+include sample_metadata_curation/bin/install_resources.py
+include sample_metadata_curation/bin/constants.py

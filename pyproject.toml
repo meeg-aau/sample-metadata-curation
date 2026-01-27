@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "requests", "pandas"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,6 +11,7 @@ requires-python = ">=3.7"
 dependencies = [
     "requests",
     "pydantic",
+    "pandas",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,13 @@ dev = [
 
 [project.scripts]
 curate-sample = "sample_metadata_curation.bin.curate:main"
+setup-sample-resources = "sample_metadata_curation.bin.install_resources:main"
+
+[tool.setuptools]
+packages = ["sample_metadata_curation", "sample_metadata_curation.bin"]
+
+[tool.setuptools.package-data]
+"*" = ["resources/*"]
 
 [tool.black]
 line-length = 88

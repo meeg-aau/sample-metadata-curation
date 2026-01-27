@@ -1,10 +1,14 @@
+import csv
 import json
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from .constants import LOCATION_KEYS, MISSING_VALUES
+import reverse_geocode
+
+from .constants import LOCATION_KEYS, MISSING_VALUES, REVERSE_GEOCODER_MISSING_CC
 from .sample_parser import load_json, parse_arguments
 
 """
@@ -29,14 +33,35 @@ LATLON_COORD_RE = re.compile(
 REJECTED_LOCATION_CHARACTERS = set("@#$%^*=+<>[]{}|\\~")
 
 
-class SampleCurator:
-    """
-    Independent curator for BioSamples JSON data.
-    Extracts and cleans location, latitude, and longitude.
-    """
+def reverse_country_code(latitude: float, longitude: float) -> Optional[str]:
+    try:
+        hit = reverse_geocode.get((latitude, longitude))
+        if not hit:
+            return None
+        return hit.get("country_code")
+    except AssertionError:
+        return None
 
-    def __init__(self):
-        pass
+
+class SampleCurator:
+    def __init__(self, resources_dir: Optional[Path] = None):
+        if resources_dir is None:
+            resources_dir = Path(__file__).parent.parent.parent / "resources"
+
+        self.mapping_csv = resources_dir / "country_to_cc_mapping.csv"
+        self.oceans_txt = resources_dir / "oceans_and_seas.txt"
+        self.name_to_cc, self.name_to_canonical = self.load_country_mapping()
+        self.oceans_and_seas = self.load_oceans_and_seas()
+
+    def load_oceans_and_seas(self) -> set:
+        oceans = set()
+        if self.oceans_txt.exists():
+            with self.oceans_txt.open(newline="", encoding="utf-8") as f:
+                for line in f:
+                    name = line.strip()
+                    if name:
+                        oceans.add(name)
+        return oceans
 
     @staticmethod
     def normalize_key(key: str) -> str:
@@ -101,7 +126,6 @@ class SampleCurator:
 
         s = str(value).strip()
         m = re.match(r"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([NSEW])?\s*$", s, re.IGNORECASE)
-        print(m.groups())
         if not m:
             return None
         num = float(m.group(1).replace(",", "."))
@@ -117,11 +141,13 @@ class SampleCurator:
         return None
 
     @staticmethod
-    def sanity_check_location(value: Optional[str]) -> bool:
-        if value is None:
+    def sanity_check_location(
+        location: Optional[str], latitude: Optional[float], longitude: Optional[float]
+    ) -> bool:
+        if location is None:
             return False
 
-        s = str(value).strip()
+        s = str(location).strip()
         if s.lower() in MISSING_VALUES:
             return False
 
@@ -142,10 +168,141 @@ class SampleCurator:
 
         return True
 
+    def load_country_mapping(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+        name_to_cc = {}
+        name_to_canonical = {}
+
+        with self.mapping_csv.open(newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if not row:
+                    continue
+                input_name, canonical_name, cc = row[0], row[1], row[2]
+                name_to_cc[input_name] = cc
+                name_to_canonical[input_name] = canonical_name
+                # Also index by canonical name to ensure it's always found
+                if canonical_name not in name_to_cc:
+                    name_to_cc[canonical_name] = cc
+                if canonical_name not in name_to_canonical:
+                    name_to_canonical[canonical_name] = canonical_name
+        return name_to_cc, name_to_canonical
+
+    def infer_reported_country_code(
+        self,
+        reported_location: Optional[str],
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        """
+        Check for location based on INSDC controlled vocab
+        and try to get ISO 2 digit country code
+        """
+        if not reported_location:
+            return None, None, None
+
+        loc = reported_location.strip()
+
+        # exact match to ENA/INSDC label
+        if loc in self.name_to_cc:
+            region_cc = self.name_to_cc.get(loc)
+            region = loc
+            locality = None
+            return region, locality, region_cc
+
+        if loc in self.oceans_and_seas:
+            return loc, None, None
+
+        """
+        INSDC location format
+        Value format “<geo_loc_name>[:<region>][, <locality>]” where
+        geographic location name (geo_loc_name) is any value from the
+        controlled vocabulary
+
+        Example
+
+        /geo_loc_name=”Canada:Vancouver”
+        /geo_loc_name=”France:Cote d’Azur, Antibes”
+        /geo_loc_name=”Atlantic Ocean:Charlie Gibbs Fracture Zone”
+        """
+        if ":" in loc:
+            region = loc.split(":")[0].strip()
+            if region in self.name_to_cc:
+                region_cc = self.name_to_cc.get(region)
+                locality = loc.split(":")[1].strip()
+                return region, locality, region_cc
+            if region in self.oceans_and_seas:
+                locality = loc.split(":")[1].strip()
+                return region, locality, None
+        return None, None, None
+
+    def geo_consistency_check(
+        self,
+        reported_location: Optional[str],
+        latitude: Optional[float],
+        longitude: Optional[float],
+    ) -> Dict[str, Any]:
+        """
+        Check if reported location matches reverse geocoder result.
+        Several levels of reporting to account for mismatches in data sources
+        """
+        out = {
+            "geo_check_status": "SKIP",
+            "geo_check_reason": None,
+            "reported_country_code": None,
+            "reverse_country_code": None,
+            "region": None,
+            "locality": None,
+        }
+
+        region, locality, reported_cc = self.infer_reported_country_code(
+            reported_location
+        )
+        out["reported_country_code"] = reported_cc
+        out["region"] = region
+        out["locality"] = locality
+
+        if region in self.oceans_and_seas:
+            out["geo_check_status"] = "PASS"
+            out["geo_check_reason"] = "ocean_or_sea"
+            return out
+
+        if latitude is None or longitude is None:
+            out["geo_check_status"] = "SKIP"
+            out["geo_check_reason"] = "no_coordinates"
+            return out
+
+        reverse_cc = reverse_country_code(latitude, longitude)
+        out["reverse_country_code"] = reverse_cc
+
+        if not reported_cc:
+            out["geo_check_status"] = "SKIP"
+            out["geo_check_reason"] = "no_reported_country_code"
+            return out
+
+        # reverse geocoder couldn't determine
+        if not reverse_cc:
+            out["geo_check_status"] = "WARN"
+            out["geo_check_reason"] = "reverse_geocoder_no_result"
+            return out
+
+        # reverse geocoder is missing some ISO codes
+        if reported_cc in REVERSE_GEOCODER_MISSING_CC:
+            out["geo_check_status"] = "WARN"
+            out["geo_check_reason"] = "reported_cc_not_supported_by_reverse_geocoder"
+            return out
+
+        if reverse_cc == reported_cc:
+            out["geo_check_status"] = "PASS"
+            out["geo_check_reason"] = "match"
+        else:
+            out["geo_check_status"] = "FAIL"
+            out["geo_check_reason"] = "country_mismatch"
+
+        return out
+
     def curate_sample(self, sample_json: Dict[str, Any]) -> Dict[str, Any]:
         """
         Takes a BioSamples JSON dictionary and returns a cleaned dictionary
-        with extracted location, latitude, and longitude.
+        with extracted region, locality, latitude, longitude and reasons
+        for pass or failed sanity check
         """
         cleaned_dict = self.standardise_keys(sample_json)
 
@@ -155,14 +312,6 @@ class SampleCurator:
             "latitude": None,
             "longitude": None,
         }
-
-        loc_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["location"])
-        if loc_key:
-            is_location = self.sanity_check_location(cleaned_dict[loc_key])
-            if is_location:
-                result["location"] = cleaned_dict[loc_key]
-            else:
-                result["location"] = None
 
         lat = None
         lon = None
@@ -206,6 +355,16 @@ class SampleCurator:
                     result["latitude"] = None
                     result["longitude"] = None
 
+        loc_key = self._first_present_key(cleaned_dict, LOCATION_KEYS["location"])
+        if loc_key:
+            is_location = self.sanity_check_location(
+                cleaned_dict[loc_key], result["latitude"], result["longitude"]
+            )
+            if is_location:
+                result["location"] = cleaned_dict[loc_key]
+            else:
+                result["location"] = None
+
         for key, value in cleaned_dict.items():
             if (
                 key not in LOCATION_KEYS["lat_lon"]
@@ -214,12 +373,23 @@ class SampleCurator:
                 and key not in LOCATION_KEYS["lon"]
             ):
                 result[key] = value
+
+        geo = self.geo_consistency_check(
+            result["location"], result["latitude"], result["longitude"]
+        )
+        result.update(geo)
+
+        # replace user supplied location with a curated region
+        if geo.get("geo_check_status") == "FAIL":
+            result["region"] = None
+        result.pop("location", None)
+
         return result
 
 
 def curate_biosample(input_data: Any) -> Dict[str, Any]:
     """
-    Helper function to curate a single biosample.
+    Curate one biosample
     Input can be a BioSamples JSON dict, a JSON string, or a path to a JSON file.
     """
     if isinstance(input_data, (str, os.PathLike)):

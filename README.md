@@ -10,6 +10,9 @@ A Python package for curating and cleaning BioSample metadata, specifically focu
 - **Automatic Switching**: Intelligent swapping of latitude and longitude if they are provided in the wrong order but fall within valid ranges when swapped.
 - **Flexible Input**: Supports BioSample JSON data as either a string or a local file path.
 
+## Source Data
+The folder "resources" contains country codes from one of the sources used by INSDC https://www.cia.gov/the-world-factbook/references/country-data-codes/
+
 ## Installation
 
 ### For Users
@@ -32,11 +35,17 @@ pip install -e ".[dev]"
 
 ### Command Line Interface
 
-The package provides a `curate-sample` command after installation:
+The package provides two main command-line tools:
 
-```bash
-curate-sample --sample_json path/to/sample.json
-```
+1. **`curate-sample`**: Curates BioSample metadata.
+   ```bash
+   curate-sample --sample_json path/to/sample.json
+   ```
+
+2. **`setup-sample-resources`**: Fetches and prepares external resources (this runs automatically during installation).
+   ```bash
+   setup-sample-resources
+   ```
 
 Or using a JSON string:
 
@@ -49,7 +58,7 @@ curate-sample --sample_json '{"accession": "SAMN...", "characteristics": {...}}'
 You can also use the curation logic in your own Python scripts. The `curate_biosample` function is flexible and accepts a dictionary, a JSON string, or a path to a JSON file:
 
 ```python
-from sample_metadata_curation.bin.curate import curate_biosample
+from sample_metadata_curation import curate_biosample
 
 # Option 1: Use a dictionary
 sample_data = {

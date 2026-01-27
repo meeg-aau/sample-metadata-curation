@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from pathlib import Path
 
 
 def parse_arguments():
@@ -10,6 +11,14 @@ def parse_arguments():
         "--sample_json",
         required=True,
         help="BioSample API JSON output or path to JSON file",
+    )
+    parser.add_argument(
+        "-cc",
+        "--country_codes",
+        required=True,
+        default=Path(__file__).parent.parent
+        / "resources"
+        / "country_to_cc_mapping.csv",
     )
     return parser.parse_args()
 
