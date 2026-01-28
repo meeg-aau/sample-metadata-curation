@@ -44,7 +44,11 @@ def reverse_country_code(latitude: float, longitude: float) -> Optional[str]:
 
 
 class SampleCurator:
-    def __init__(self, resources_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        resources_dir: Optional[Path] = None,
+        biome_keys: Optional[List[str]] = None,
+    ):
         if resources_dir is None:
             resources_dir = Path(__file__).parent.parent.parent / "resources"
 
@@ -52,6 +56,9 @@ class SampleCurator:
         self.oceans_txt = resources_dir / "oceans_and_seas.txt"
         self.name_to_cc, self.name_to_canonical = self.load_country_mapping()
         self.oceans_and_seas = self.load_oceans_and_seas()
+        self.biome_keys = (
+            [self.normalize_key(k) for k in biome_keys] if biome_keys else []
+        )
 
     def load_oceans_and_seas(self) -> set:
         oceans = set()
@@ -374,6 +381,15 @@ class SampleCurator:
             ):
                 result[key] = value
 
+        # Biome extraction
+        if self.biome_keys:
+            biome_values = []
+            for bk in self.biome_keys:
+                if bk in cleaned_dict:
+                    biome_values.append(cleaned_dict.get(bk))
+            if biome_values:
+                result["biome"] = ";".join(biome_values)
+
         geo = self.geo_consistency_check(
             result["location"], result["latitude"], result["longitude"]
         )
@@ -387,7 +403,9 @@ class SampleCurator:
         return result
 
 
-def curate_biosample(input_data: Any) -> Dict[str, Any]:
+def curate_biosample(
+    input_data: Any, biome_keys: Optional[List[str]] = None
+) -> Dict[str, Any]:
     """
     Curate one biosample
     Input can be a BioSamples JSON dict, a JSON string, or a path to a JSON file.
@@ -400,13 +418,14 @@ def curate_biosample(input_data: Any) -> Dict[str, Any]:
     if not sample_json:
         return {}
 
-    curator = SampleCurator()
+    curator = SampleCurator(biome_keys=biome_keys)
     return curator.curate_sample(sample_json)
 
 
 def main():
     args = parse_arguments()
-    result = curate_biosample(args.sample_json)
+    biome_keys = args.biome.split(",") if args.biome else None
+    result = curate_biosample(args.sample_json, biome_keys=biome_keys)
     if result:
         print(json.dumps(result, indent=2))
     else:

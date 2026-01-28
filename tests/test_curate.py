@@ -175,3 +175,18 @@ def test_coordinate_region_match(
     assert result["locality"] == expected_locality
     assert result["geo_check_status"] == expected_geo_match
     assert result["geo_check_reason"] == expected_geo_match_reason
+
+
+def test_biome_extraction():
+    biome_keys = [
+        "01_mfd_sampletype",
+        "02_mfd_areatype",
+        "03_mfd_hab1",
+        "04_mfd_hab2",
+        "05_mfd_hab3",
+    ]
+    result = curate_biosample(FIXTURE_PATH, biome_keys=biome_keys)
+    expected_biome = (
+        "Soil;Natural;Bogs, mires and fens;Calcareous fens;Petrifying springs"
+    )
+    assert result.get("biome") == expected_biome

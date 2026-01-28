@@ -15,10 +15,16 @@ def parse_arguments():
     parser.add_argument(
         "-cc",
         "--country_codes",
-        required=True,
+        required=False,
         default=Path(__file__).parent.parent
         / "resources"
         / "country_to_cc_mapping.csv",
+    )
+    parser.add_argument(
+        "-b",
+        "--biome",
+        required=False,
+        help="Comma separated list of keys to extract as biome",
     )
     return parser.parse_args()
 
