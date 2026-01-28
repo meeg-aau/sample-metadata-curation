@@ -50,7 +50,7 @@ class SampleCurator:
         biome_keys: Optional[List[str]] = None,
     ):
         if resources_dir is None:
-            resources_dir = Path(__file__).parent.parent.parent / "resources"
+            resources_dir = Path(__file__).parent.parent / "resources"
 
         self.mapping_csv = resources_dir / "country_to_cc_mapping.csv"
         self.oceans_txt = resources_dir / "oceans_and_seas.txt"

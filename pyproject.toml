@@ -31,7 +31,7 @@ setup-sample-resources = "sample_metadata_curation.bin.install_resources:main"
 packages = ["sample_metadata_curation", "sample_metadata_curation.bin"]
 
 [tool.setuptools.package-data]
-"*" = ["resources/*"]
+sample_metadata_curation = ["resources/*"]
 
 [tool.black]
 line-length = 88

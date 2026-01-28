@@ -211,16 +211,8 @@ def create_final_cc_mapping(
 def main():
 
     logging.info("Running geographical mapping setup...")
-    # resources should be at the root of the package, or next to bin/
-    # In the repo it is at root/resources
-    # When installed it might be in different places depending on
-    # how it's packaged.
 
-    # Try project root first (where resources/ is)
-    resource_dir = Path(__file__).parent.parent.parent / "resources"
-    if not resource_dir.exists():
-        # Try inside the package
-        resource_dir = Path(__file__).parent.parent / "resources"
+    resource_dir = Path(__file__).parent.parent / "resources"
 
     if not resource_dir.exists():
         logging.error(f"Resource directory {resource_dir} does not exist. Exiting...")
@@ -231,7 +223,6 @@ def main():
         logging.error(f"country-codes.csv not found in {resource_dir}. Exiting...")
         return
     ena_xml, rg_csv = get_checklist_countries()
-    # reverse_geocoder country codes
 
     ena_countries = parse_ena_xml(ena_xml)
     logging.info(f"{len(ena_countries)} countries found in ENA checklist")

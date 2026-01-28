@@ -22,13 +22,16 @@ def run_install_resources():
     if os.path.exists(script_path):
         subprocess.check_call([sys.executable, script_path])
     else:
-        # If not in current dir, maybe it's already installed?
-        # But we want to run it during installation to generate files
-        # that SHOULD be packaged.
-        # Actually, if we run it now, it generates files in resources/
-        # which will then be picked up by setuptools if they are
-        # included in package_data.
-        print(f"Warning: {script_path} not found. Skipping resource installation.")
+        # Try running it as a module
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "sample_metadata_curation.bin.install_resources"]
+            )
+        except subprocess.CalledProcessError:
+            print(
+                f"Warning: {script_path} not found and failed to run as module. "
+                "Skipping resource installation."
+            )
 
 
 class PostInstallCommand(install):
