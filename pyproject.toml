@@ -12,6 +12,7 @@ dependencies = [
     "requests",
     "pydantic",
     "pandas",
+    "reverse-geocode==1.6.6",
 ]
 
 [project.optional-dependencies]
