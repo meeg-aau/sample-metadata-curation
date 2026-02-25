@@ -24,11 +24,11 @@ dev = [
 ]
 
 [project.scripts]
-curate-sample = "sample_metadata_curation.bin.curate:main"
-setup-sample-resources = "sample_metadata_curation.bin.install_resources:main"
+curate-sample = "sample_metadata_curation.curate:main"
+setup-sample-resources = "sample_metadata_curation.install_resources:main"
 
 [tool.setuptools]
-packages = ["sample_metadata_curation", "sample_metadata_curation.bin"]
+packages = ["sample_metadata_curation"]
 
 [tool.setuptools.package-data]
 sample_metadata_curation = ["resources/*"]

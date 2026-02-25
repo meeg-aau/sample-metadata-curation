@@ -16,16 +16,14 @@ def run_install_resources():
     # During install, the files are being copied.
 
     # Try to find the script
-    script_path = os.path.join(
-        "sample_metadata_curation", "bin", "install_resources.py"
-    )
+    script_path = os.path.join("sample_metadata_curation", "install_resources.py")
     if os.path.exists(script_path):
         subprocess.check_call([sys.executable, script_path])
     else:
         # Try running it as a module
         try:
             subprocess.check_call(
-                [sys.executable, "-m", "sample_metadata_curation.bin.install_resources"]
+                [sys.executable, "-m", "sample_metadata_curation.install_resources"]
             )
         except subprocess.CalledProcessError:
             print(

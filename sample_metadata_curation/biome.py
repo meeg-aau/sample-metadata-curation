@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from sample_parser import normalize_key
+from sample_metadata_curation.sample_parser import normalize_key
 
 
 class BiomeCurator:

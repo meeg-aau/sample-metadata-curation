@@ -1,7 +1,7 @@
 # test_parser.py
 import pytest
 
-from sample_metadata_curation.bin.curate import curate_biosample
+from sample_metadata_curation.curate import curate_biosample
 
 FIXTURE_PATH = "tests/fixtures/test.json"
 

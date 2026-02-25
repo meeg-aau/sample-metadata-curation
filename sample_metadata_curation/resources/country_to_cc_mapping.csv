@@ -14,12 +14,12 @@ Ashmore and Cartier Islands,Australia,AU
 Australia,Australia,AU
 Austria,Austria,AT
 Azerbaijan,Azerbaijan,AZ
-"Bahamas, The","Bahamas, The",BS
+Bahamas,"Bahamas, The",BS
 Bahrain,Bahrain,BH
 Baker Island,United States Minor Outlying Islands,UM
 Bangladesh,Bangladesh,BD
 Barbados,Barbados,BB
-France,France,FR
+Bassas da India,France,FR
 Belarus,Belarus,BY
 Belgium,Belgium,BE
 Belize,Belize,BZ
@@ -39,7 +39,7 @@ Burundi,Burundi,BI
 Cambodia,Cambodia,KH
 Cameroon,Cameroon,CM
 Canada,Canada,CA
-Cabo Verde,Cabo Verde,CV
+Cape Verde,Cabo Verde,CV
 Cayman Islands,Cayman Islands,KY
 Central African Republic,Central African Republic,CF
 Chad,Chad,TD
@@ -47,7 +47,7 @@ Chile,Chile,CL
 China,China,CN
 Christmas Island,Christmas Island,CX
 Clipperton Island,France,FR
-Cocos (Keeling) Islands,Cocos (Keeling) Islands,CC
+Cocos Islands,Cocos (Keeling) Islands,CC
 Colombia,Colombia,CO
 Comoros,Comoros,KM
 Cook Islands,Cook Islands,CK
@@ -57,8 +57,9 @@ Croatia,Croatia,HR
 Cuba,Cuba,CU
 Curacao,Curacao,CW
 Cyprus,Cyprus,CY
+Czech Republic,Czechia,CZ
 Czechia,Czechia,CZ
-"Congo, Democratic Republic of the","Congo, Democratic Republic of the",CD
+Democratic Republic of the Congo,"Congo, Democratic Republic of the",CD
 Denmark,Denmark,DK
 Djibouti,Djibouti,DJ
 Dominica,Dominica,DM
@@ -71,20 +72,23 @@ Eritrea,Eritrea,ER
 Estonia,Estonia,EE
 Eswatini,Eswatini,SZ
 Ethiopia,Ethiopia,ET
+Europa Island,France,FR
 Falkland Islands (Islas Malvinas),Falkland Islands (Islas Malvinas),FK
 Faroe Islands,Faroe Islands,FO
 Fiji,Fiji,FJ
 Finland,Finland,FI
+France,France,FR
 French Guiana,French Guiana,GF
 French Polynesia,French Polynesia,PF
 French Southern and Antarctic Lands,French Southern and Antarctic Lands,TF
 Gabon,Gabon,GA
-"Gambia, The","Gambia, The",GM
+Gambia,"Gambia, The",GM
 Gaza Strip,Gaza Strip,PS
 Georgia,Georgia,GE
 Germany,Germany,DE
 Ghana,Ghana,GH
 Gibraltar,Gibraltar,GI
+Glorioso Islands,France,FR
 Greece,Greece,GR
 Greenland,Greenland,GL
 Grenada,Grenada,GD
@@ -117,6 +121,7 @@ Jarvis Island,United States Minor Outlying Islands,UM
 Jersey,Jersey,JE
 Johnston Atoll,United States Minor Outlying Islands,UM
 Jordan,Jordan,JO
+Juan de Nova Island,France,FR
 Kazakhstan,Kazakhstan,KZ
 Kenya,Kenya,KE
 Kingman Reef,United States Minor Outlying Islands,UM
@@ -155,7 +160,7 @@ Montenegro,Montenegro,ME
 Montserrat,Montserrat,MS
 Morocco,Morocco,MA
 Mozambique,Mozambique,MZ
-Burma,Burma,MM
+Myanmar,Burma,MM
 Namibia,Namibia,NA
 Nauru,Nauru,NR
 Navassa Island,United States Minor Outlying Islands,UM
@@ -168,7 +173,7 @@ Niger,Niger,NE
 Nigeria,Nigeria,NG
 Niue,Niue,NU
 Norfolk Island,Norfolk Island,NF
-"Korea, North","Korea, North",KP
+North Korea,"Korea, North",KP
 North Macedonia,North Macedonia,MK
 Northern Mariana Islands,Northern Mariana Islands,MP
 Norway,Norway,NO
@@ -186,13 +191,13 @@ Poland,Poland,PL
 Portugal,Portugal,PT
 Puerto Rico,Puerto Rico,PR
 Qatar,Qatar,QA
-"Congo, Republic of the","Congo, Republic of the",CG
+Republic of the Congo,"Congo, Republic of the",CG
 Reunion,Reunion,RE
 Romania,Romania,RO
 Russia,Russia,RU
 Rwanda,Rwanda,RW
 Saint Barthelemy,Saint Barthelemy,BL
-"Saint Helena, Ascension, and Tristan da Cunha","Saint Helena, Ascension, and Tristan da Cunha",SH
+Saint Helena,"Saint Helena, Ascension, and Tristan da Cunha",SH
 Saint Kitts and Nevis,Saint Kitts and Nevis,KN
 Saint Lucia,Saint Lucia,LC
 Saint Martin,Saint Martin,MF
@@ -214,11 +219,11 @@ Solomon Islands,Solomon Islands,SB
 Somalia,Somalia,SO
 South Africa,South Africa,ZA
 South Georgia and the South Sandwich Islands,South Georgia and the South Sandwich Islands,GS
-"Korea, South","Korea, South",KR
+South Korea,"Korea, South",KR
 South Sudan,South Sudan,SS
 Spain,Spain,ES
 Sri Lanka,Sri Lanka,LK
-West Bank,West Bank,PS
+State of Palestine,West Bank,PS
 Sudan,Sudan,SD
 Suriname,Suriname,SR
 Svalbard,Svalbard,SJ
@@ -234,12 +239,13 @@ Togo,Togo,TG
 Tokelau,Tokelau,TK
 Tonga,Tonga,TO
 Trinidad and Tobago,Trinidad and Tobago,TT
+Tromelin Island,France,FR
 Tunisia,Tunisia,TN
-Turkey (Turkiye),Turkey (Turkiye),TR
+Turkey,Turkey (Turkiye),TR
 Turkmenistan,Turkmenistan,TM
 Turks and Caicos Islands,Turks and Caicos Islands,TC
 Tuvalu,Tuvalu,TV
-United States,United States,US
+USA,United States,US
 Uganda,Uganda,UG
 Ukraine,Ukraine,UA
 United Arab Emirates,United Arab Emirates,AE
@@ -248,10 +254,11 @@ Uruguay,Uruguay,UY
 Uzbekistan,Uzbekistan,UZ
 Vanuatu,Vanuatu,VU
 Venezuela,Venezuela,VE
-Vietnam,Vietnam,VN
+Viet Nam,Vietnam,VN
 Virgin Islands,Virgin Islands,VI
 Wake Island,United States Minor Outlying Islands,UM
 Wallis and Futuna,Wallis and Futuna,WF
+West Bank,West Bank,PS
 Western Sahara,Western Sahara,EH
 Yemen,Yemen,YE
 Zambia,Zambia,ZM

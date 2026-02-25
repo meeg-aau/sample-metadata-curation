@@ -4,8 +4,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import reverse_geocode
-from constants import LOCATION_KEYS, MISSING_VALUES, REVERSE_GEOCODER_MISSING_CC
-from sample_parser import normalize_key
+
+from sample_metadata_curation.constants import (
+    LOCATION_KEYS,
+    MISSING_VALUES,
+    REVERSE_GEOCODER_MISSING_CC,
+)
+from sample_metadata_curation.sample_parser import normalize_key
 
 """
 regex for lat lon e.g.
@@ -45,7 +50,7 @@ class LocationCurator:
         resources_dir: Optional[Path] = None,
     ):
         if resources_dir is None:
-            resources_dir = Path(__file__).parent.parent / "resources"
+            resources_dir = Path(__file__).parent / "resources"
 
         self.mapping_csv = resources_dir / "country_to_cc_mapping.csv"
         self.oceans_txt = resources_dir / "oceans_and_seas.txt"

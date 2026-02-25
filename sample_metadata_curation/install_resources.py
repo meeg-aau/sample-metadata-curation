@@ -6,7 +6,8 @@ from xml.etree import ElementTree
 
 import pandas as pd
 import requests
-from constants import (
+
+from sample_metadata_curation.constants import (
     MISSING_COUNTRY_MAPPING,
     MISSING_VALUES,
     NON_COUNTRIES,
@@ -198,7 +199,7 @@ def main():
 
     logging.info("Running geographical mapping setup...")
 
-    resource_dir = Path(__file__).parent.parent / "resources"
+    resource_dir = Path(__file__).parent / "resources"
 
     if not resource_dir.exists():
         logging.error(f"Resource directory {resource_dir} does not exist. Exiting...")

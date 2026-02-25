@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from biome import BiomeCurator
-from location import LocationCurator
-from sample_parser import load_json, parse_arguments
+from sample_metadata_curation.biome import BiomeCurator
+from sample_metadata_curation.location import LocationCurator
+from sample_metadata_curation.sample_parser import load_json, parse_arguments
 
 
 class SampleCurator:
@@ -16,7 +16,7 @@ class SampleCurator:
         biome_keys: Optional[List[str]] = None,
     ):
         if resources_dir is None:
-            resources_dir = Path(__file__).parent.parent / "resources"
+            resources_dir = Path(__file__).parent / "resources"
 
         self.location_curator = LocationCurator(resources_dir=resources_dir)
         self.biome_curator = BiomeCurator(biome_keys=biome_keys)

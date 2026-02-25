@@ -1,3 +1,6 @@
 recursive-include sample_metadata_curation/resources *
-include sample_metadata_curation/bin/install_resources.py
-include sample_metadata_curation/bin/constants.py
+include sample_metadata_curation/install_resources.py
+include sample_metadata_curation/constants.py
+include sample_metadata_curation/biome.py
+include sample_metadata_curation/location.py
+include sample_metadata_curation/sample_parser.py
