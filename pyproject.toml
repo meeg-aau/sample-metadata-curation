@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "requests", "pandas"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sample_metadata_curation"
+version = "0.1.0"
+description = "A package for curating BioSample metadata"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "requests",
+    "pydantic",
+    "pandas",
+    "reverse-geocode==1.6.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "pre-commit",
+    "pytest",
+]
+
+[project.scripts]
+curate-sample = "sample_metadata_curation.curate:main"
+setup-sample-resources = "sample_metadata_curation.install_resources:main"
+
+[tool.setuptools]
+packages = ["sample_metadata_curation", "sample_metadata_curation.resources"]
+
+[tool.setuptools.package-data]
+sample_metadata_curation = ["*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

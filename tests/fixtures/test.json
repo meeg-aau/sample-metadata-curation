@@ -1,0 +1,182 @@
+{
+  "name" : "MFD04522",
+  "accession" : "SAMN39868869",
+  "sraAccession" : "SRS20505516",
+  "webinSubmissionAccountId" : "Webin-40894",
+  "taxId" : 410658,
+  "status" : "PUBLIC",
+  "release" : "2024-06-28T00:00:00Z",
+  "update" : "2025-01-21T19:00:04.602Z",
+  "submitted" : "2024-02-08T06:41:26.506Z",
+  "characteristics" : {
+    "External Id" : [ {
+      "text" : "SAMN39868869",
+      "tag" : "Namespace:BioSample"
+    } ],
+    "INSDC center name" : [ {
+      "text" : "Aalborg University"
+    } ],
+    "INSDC first public" : [ {
+      "text" : "2024-06-28T00:00:00Z"
+    } ],
+    "INSDC last update" : [ {
+      "text" : "2024-06-28T02:14:23.072Z"
+    } ],
+    "INSDC secondary accession" : [ {
+      "text" : "SRS20505516"
+    } ],
+    "INSDC status" : [ {
+      "text" : "live"
+    } ],
+    "MFDID" : [ {
+      "text" : "MFD04522",
+      "tag" : "attribute"
+    } ],
+    "NCBI submission model" : [ {
+      "text" : "Metagenome or environmental"
+    } ],
+    "NCBI submission package" : [ {
+      "text" : "Metagenome.environmental.1.0"
+    } ],
+    "SRA accession" : [ {
+      "text" : "SRS20505516"
+    } ],
+    "collection_date" : [ {
+      "text" : "2021-06-23",
+      "tag" : "attribute"
+    } ],
+    "description" : [ {
+      "text" : "NA"
+    } ],
+    "geo_loc_name" : [ {
+      "text" : "Denmark",
+      "tag" : "attribute"
+    } ],
+    "host" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "isolation_source" : [ {
+      "text" : "Soil from Natural Bogs, mires and fens",
+      "tag" : "attribute"
+    } ],
+    "lat_lon" : [ {
+      "text" : "55.62115 N 8.2849 E",
+      "tag" : "attribute"
+    } ],
+    "organism" : [ {
+      "text" : "soil metagenome",
+      "ontologyTerms" : [ "http://purl.obolibrary.org/obo/NCBITaxon_410658" ]
+    } ],
+    "project" : [ {
+      "text" : "Microflora Danica"
+    } ],
+    "ref_biomaterial" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "rel_to_oxygen" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "samp_collect_device" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "samp_mat_process" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "samp_size" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "source_material_id" : [ {
+      "text" : "NA",
+      "tag" : "attribute"
+    } ],
+    "title" : [ {
+      "text" : "NA"
+    } ]
+  },
+  "externalReferences" : [ {
+    "url" : "https://www.ebi.ac.uk/ena/browser/view/SAMN39868869",
+    "duo" : [ ]
+  } ],
+  "submittedVia" : "PIPELINE_IMPORT",
+  "create" : "2024-02-08T06:41:26.506Z",
+  "structuredData" : [ {
+    "domain" : null,
+    "webinSubmissionAccountId" : "Webin-41583",
+    "type" : "Location ontology",
+    "schema" : null,
+    "content" : [ {
+      "ontology" : {
+        "value" : "Microflora Danica curated environmental ontology",
+        "iri" : null
+      },
+      "01_mfd_sampletype" : {
+        "value" : "Soil",
+        "iri" : null
+      },
+      "02_mfd_areatype" : {
+        "value" : "Natural",
+        "iri" : null
+      },
+      "03_mfd_hab1" : {
+        "value" : "Bogs, mires and fens",
+        "iri" : null
+      },
+      "04_mfd_hab2" : {
+        "value" : "Calcareous fens",
+        "iri" : null
+      },
+      "05_mfd_hab3" : {
+        "value" : "Petrifying springs",
+        "iri" : null
+      },
+      "coordinate_reliability" : {
+        "value" : "Yes",
+        "iri" : null
+      }
+    } ]
+  }, {
+    "domain" : null,
+    "webinSubmissionAccountId" : "Webin-41583",
+    "type" : "Experiment",
+    "schema" : null,
+    "content" : [ {
+      "project_identifier" : {
+        "value" : "P08_1",
+        "iri" : null
+      },
+      "extraction_method" : {
+        "value" : "PowerSoil-Pro-HT",
+        "iri" : null
+      },
+      "library_method" : {
+        "value" : "ILLUMINA-DNA-PREP.V2",
+        "iri" : null
+      }
+    } ]
+  } ],
+  "_links" : {
+    "self" : {
+      "href" : "https://www.ebi.ac.uk/biosamples/samples/SAMN39868869"
+    },
+    "applyCurations" : {
+      "href" : "https://www.ebi.ac.uk/biosamples/samples/SAMN39868869{?applyCurations}",
+      "templated" : true
+    },
+    "curationLinks" : {
+      "href" : "https://www.ebi.ac.uk/biosamples/samples/SAMN39868869/curationlinks"
+    },
+    "curationLink" : {
+      "href" : "https://www.ebi.ac.uk/biosamples/samples/SAMN39868869/curationlinks/{hash}",
+      "templated" : true
+    },
+    "structuredData" : {
+      "href" : "https://www.ebi.ac.uk/biosamples/structureddata/SAMN39868869"
+    }
+  }
+}
