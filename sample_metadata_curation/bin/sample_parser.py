@@ -1,7 +1,19 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
+
+
+def normalize_key(key: str) -> str:
+    """
+    simplify special characters in key names
+    """
+    s = str(key).strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "_", s)  # non-alphanumerics -> underscores
+    s = re.sub(r"_+", "_", s)  # collapse multiple underscores
+    s = s.strip("_")  # trim leading/trailing underscores
+    return s
 
 
 def parse_arguments():

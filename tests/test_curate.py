@@ -70,12 +70,17 @@ def test_parse_lat_lon_combined_invalid_returns_none(lat_lon_str):
 
 
 def test_parse_lat_lon_switched():
-    # Case where lat/lon are swapped: lat=91 (invalid as lat), lon=8 (valid as lat)
-    # Swapped: lat=8, lon=91 -> both valid
-    sample = {"characteristics": {"lat_lon": [{"text": "91 N 8 E"}]}}
+    # Case where lat/lon are swapped: lat=127 invalid as lat but valid as long
+    sample = {
+        "characteristics": {
+            "lat_lon": [{"text": "127.7669 N 35.9078 E"}],
+            "geo_loc_name": [{"text": "South Korea"}],
+        }
+    }
     result = curate_biosample(sample)
-    assert result["latitude"] == 8.0
-    assert result["longitude"] == 91.0
+    assert result["latitude"] == 35.9078
+    assert result["longitude"] == 127.7669
+    assert result["coordinates_reversed"] is True
 
 
 @pytest.mark.parametrize(
@@ -190,3 +195,25 @@ def test_biome_extraction():
         "Soil;Natural;Bogs, mires and fens;Calcareous fens;Petrifying springs"
     )
     assert result.get("biome") == expected_biome
+
+
+def test_ocean_swapping_skipped():
+    """
+    Test that for an ocean, the lat/long swapping is skipped even if the
+    original coordinates would trigger it (e.g. lat > 90).
+    """
+    sample = {
+        "characteristics": {
+            "geo_loc_name": [{"text": "Atlantic Ocean:Test Locality"}],
+            "lat_lon": [{"text": "120.0 N 20.0 E"}],
+        }
+    }
+
+    result = curate_biosample(sample)
+
+    assert result["region"] == "Atlantic Ocean"
+    assert result["latitude"] == 120.0
+    assert result["longitude"] == 20.0
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "ocean_or_sea"
+    assert result["coordinates_reversed"] is False

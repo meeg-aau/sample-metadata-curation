@@ -6,22 +6,12 @@ from xml.etree import ElementTree
 
 import pandas as pd
 import requests
-
-try:
-    from .constants import (
-        MISSING_COUNTRY_MAPPING,
-        MISSING_VALUES,
-        NON_COUNTRIES,
-        REVERSE_GEOCODER_MISSING_CC,
-    )
-except ImportError:
-    from constants import (
-        MISSING_COUNTRY_MAPPING,
-        MISSING_VALUES,
-        NON_COUNTRIES,
-        REVERSE_GEOCODER_MISSING_CC,
-    )
-
+from constants import (
+    MISSING_COUNTRY_MAPPING,
+    MISSING_VALUES,
+    NON_COUNTRIES,
+    REVERSE_GEOCODER_MISSING_CC,
+)
 
 logging.basicConfig(level=logging.INFO)
 logging = logging.getLogger()
@@ -123,10 +113,12 @@ def create_final_cc_mapping(
             oceans_and_seas.append(country)
             continue
 
+        # original - South Korea, country = Korea, South (as per ISO)
+        original_country = country
         if country not in iso_cc:
-            mapped = MISSING_COUNTRY_MAPPING.get(country, None)
-            if mapped:
-                country = mapped
+            iso_country = MISSING_COUNTRY_MAPPING.get(country, None)
+            if iso_country:
+                country = iso_country
             else:
                 logging.warning(
                     f"Warning: country {country} not found in ISO country codes mapping"
@@ -138,11 +130,8 @@ def create_final_cc_mapping(
         # Normal case: ISO code exists
         if iso_code != "-" and isinstance(iso_code, str) and iso_code.strip():
             cc = iso_code.split("|")[0].strip()
-            if cc in rg_cc:
-                final_mapping[country] = [country, cc]
-            elif cc in REVERSE_GEOCODER_MISSING_CC:
-                # keep but geocoder will fail
-                final_mapping[country] = [country, cc]
+            if cc in rg_cc or cc in REVERSE_GEOCODER_MISSING_CC:
+                final_mapping[original_country] = [country, cc]
             else:
                 logging.warning(
                     f"Warning: ISO code {cc} for {country} "
@@ -194,11 +183,8 @@ def create_final_cc_mapping(
             continue
 
         cc = ref_iso_code.split("|")[0].strip()
-        if cc in rg_cc:
-            final_mapping[country] = [reference_country, cc]
-        elif cc in REVERSE_GEOCODER_MISSING_CC:
-            # keep but geocoder will fail
-            final_mapping[country] = [reference_country, cc]
+        if cc in rg_cc or cc in REVERSE_GEOCODER_MISSING_CC:
+            final_mapping[original_country] = [reference_country, cc]
         else:
             logging.warning(
                 f"Warning: reference ISO code {cc} for {reference_country} "
@@ -234,6 +220,12 @@ def main():
     final_mapping, oceans_and_seas = create_final_cc_mapping(
         ena_countries, rg_cc, iso_cc
     )
+
+    # Ensure all missing country mappings are included
+    for original, mapped in MISSING_COUNTRY_MAPPING.items():
+        if original not in final_mapping and mapped in final_mapping:
+            final_mapping[original] = final_mapping[mapped]
+
     with open(final_mapping_path, "w") as f:
         writer = csv.writer(f)
         for key, value in final_mapping.items():
