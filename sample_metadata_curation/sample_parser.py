@@ -28,7 +28,9 @@ def parse_arguments():
         "-cc",
         "--country_codes",
         required=False,
-        default=Path(__file__).parent / "resources" / "country_to_cc_mapping.csv",
+        default=Path(__file__).parent.parent
+        / "resources"
+        / "country_to_cc_mapping.csv",
     )
     parser.add_argument(
         "-b",

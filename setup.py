@@ -10,15 +10,15 @@ def run_install_resources():
     import subprocess
 
     print("Running geographical mapping setup...")
-    # We need to make sure the package is in sys.path if we want to run
-    # the script via python -m
-    # Or we can just run the script directly if we know where it is.
-    # During install, the files are being copied.
 
     # Try to find the script
     script_path = os.path.join("sample_metadata_curation", "install_resources.py")
     if os.path.exists(script_path):
-        subprocess.check_call([sys.executable, script_path])
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.getcwd() + (
+            os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else ""
+        )
+        subprocess.check_call([sys.executable, script_path], env=env)
     else:
         # Try running it as a module
         try:

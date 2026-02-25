@@ -28,10 +28,10 @@ curate-sample = "sample_metadata_curation.curate:main"
 setup-sample-resources = "sample_metadata_curation.install_resources:main"
 
 [tool.setuptools]
-packages = ["sample_metadata_curation"]
+packages = ["sample_metadata_curation", "sample_metadata_curation.resources"]
 
 [tool.setuptools.package-data]
-sample_metadata_curation = ["resources/*"]
+sample_metadata_curation = ["*"]
 
 [tool.black]
 line-length = 88
