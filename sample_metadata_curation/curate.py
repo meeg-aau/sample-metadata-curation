@@ -6,8 +6,11 @@ from typing import Any, Dict, List, Optional
 
 from sample_metadata_curation.biome import BiomeCurator
 from sample_metadata_curation.location import LocationCurator
-from sample_metadata_curation.sample_parser import load_json, parse_arguments
-from sample_metadata_curation.sample_parser import standardise_keys
+from sample_metadata_curation.sample_parser import (
+    load_json,
+    parse_arguments,
+    standardise_keys,
+)
 
 
 class SampleCurator:

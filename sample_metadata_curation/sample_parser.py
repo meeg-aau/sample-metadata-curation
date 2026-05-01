@@ -16,6 +16,7 @@ def normalise_key(key: str) -> str:
     s = s.strip("_")  # trim leading/trailing underscores
     return s
 
+
 def standardise_keys(sample_json: Dict[str, Any]) -> Dict[str, Optional[str]]:
     """
     Convert BioSamples JSON sections 'characteristics' and 'structured data'
