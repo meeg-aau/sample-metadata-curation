@@ -6,7 +6,11 @@ from typing import Any, Dict, List, Optional
 
 from sample_metadata_curation.biome import BiomeCurator
 from sample_metadata_curation.location import LocationCurator
-from sample_metadata_curation.sample_parser import load_json, parse_arguments
+from sample_metadata_curation.sample_parser import (
+    load_json,
+    parse_arguments,
+    standardise_keys,
+)
 
 
 class SampleCurator:
@@ -27,7 +31,7 @@ class SampleCurator:
         with extracted region, locality, latitude, longitude and reasons
         for pass or failed sanity check
         """
-        cleaned_dict = self.location_curator.standardise_keys(sample_json)
+        cleaned_dict = standardise_keys(sample_json)
 
         accession = sample_json.get("accession")
         result = self.location_curator.curate_location(
@@ -36,9 +40,6 @@ class SampleCurator:
 
         for key, value in cleaned_dict.items():
             if key not in result and key != "accession":
-                # Check if it was a location related key that curate_location handles
-                # Actually, result already has lat/lon/region etc.
-                # We need to exclude all keys that curate_location considers
                 from .constants import LOCATION_KEYS
 
                 if (

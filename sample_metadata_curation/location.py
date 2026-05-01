@@ -10,7 +10,6 @@ from sample_metadata_curation.constants import (
     MISSING_VALUES,
     REVERSE_GEOCODER_MISSING_CC,
 )
-from sample_metadata_curation.sample_parser import normalize_key
 
 """
 regex for lat lon e.g.
@@ -54,7 +53,7 @@ class LocationCurator:
 
         self.mapping_csv = resources_dir / "country_to_cc_mapping.csv"
         self.oceans_txt = resources_dir / "oceans_and_seas.txt"
-        self.name_to_cc, self.name_to_canonical = self.load_country_mapping()
+        self.name_to_cc = self.load_country_mapping()
         self.oceans_and_seas = self.load_oceans_and_seas()
 
     def load_oceans_and_seas(self) -> set:
@@ -66,41 +65,6 @@ class LocationCurator:
                     if name:
                         oceans.add(name)
         return oceans
-
-    def standardise_keys(self, sample_json: Dict[str, Any]) -> Dict[str, Optional[str]]:
-        """
-        Convert BioSamples JSON sections 'characteristics' and 'structured data'
-        into a simple dict:
-          normalized_key -> first item's 'text' (for characteristics)
-                            or 'value' (for structured data)
-        """
-        out = {}
-
-        # 1. Process characteristics
-        chars = sample_json.get("characteristics") or {}
-        for key, items in chars.items():
-            norm_key = normalize_key(key)
-            if isinstance(items, list) and items:
-                first = items[0]
-                val = first.get("text") if isinstance(first, dict) else str(first)
-                out[norm_key] = val
-            else:
-                out[norm_key] = None
-
-        # 2. Process structuredData
-        structured_data = sample_json.get("structuredData") or []
-        for entry in structured_data:
-            content_list = entry.get("content") or []
-            for content in content_list:
-                for key, val_obj in content.items():
-                    norm_key = normalize_key(key)
-                    if isinstance(val_obj, dict):
-                        val = val_obj.get("value")
-                        if val is not None:
-                            out[norm_key] = str(val)
-                    elif val_obj is not None:
-                        out[norm_key] = str(val_obj)
-        return out
 
     @staticmethod
     def _apply_direction(value: float, direction: Optional[str]) -> float:
@@ -161,9 +125,8 @@ class LocationCurator:
 
         return True
 
-    def load_country_mapping(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+    def load_country_mapping(self) -> Dict[str, str]:
         name_to_cc = {}
-        name_to_canonical = {}
 
         with self.mapping_csv.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
@@ -172,13 +135,10 @@ class LocationCurator:
                     continue
                 input_name, canonical_name, cc = row[0], row[1], row[2]
                 name_to_cc[input_name] = cc
-                name_to_canonical[input_name] = canonical_name
                 # Also index by canonical name to ensure it's always found
                 if canonical_name not in name_to_cc:
                     name_to_cc[canonical_name] = cc
-                if canonical_name not in name_to_canonical:
-                    name_to_canonical[canonical_name] = canonical_name
-        return name_to_cc, name_to_canonical
+        return name_to_cc
 
     def infer_reported_country_code(
         self,

@@ -1,11 +1,11 @@
 from typing import Any, Dict, List, Optional
 
-from sample_metadata_curation.sample_parser import normalize_key
+from sample_metadata_curation.sample_parser import normalise_key
 
 
 class BiomeCurator:
     def __init__(self, biome_keys: Optional[List[str]] = None):
-        self.biome_keys = [normalize_key(k) for k in biome_keys] if biome_keys else []
+        self.biome_keys = [normalise_key(k) for k in biome_keys] if biome_keys else []
 
     def curate_biome(self, cleaned_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
