@@ -1,9 +1,17 @@
 # test_parser.py
 import pytest
+from pathlib import Path
 
 from sample_metadata_curation.curate import curate_biosample
 
-FIXTURE_PATH = "tests/fixtures/test.json"
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "test.json"
+
+
+def make_sample(lat, lon, location=None):
+    chars = {"lat_lon": [{"text": f"{lat} {lon}"}]}
+    if location:
+        chars["geo_loc_name"] = [{"text": location}]
+    return {"accession": "TEST001", "characteristics": chars}
 
 
 def test_curate_biosample_full():
@@ -217,3 +225,79 @@ def test_ocean_swapping_skipped():
     assert result["geo_check_status"] == "PASS"
     assert result["geo_check_reason"] == "ocean_or_sea"
     assert result["coordinates_reversed"] is False
+
+
+# ── Coordinate quality checks ──────────────────────────────────────────────
+
+def test_null_island():
+    result = curate_biosample(make_sample(0.0, 0.0))
+    assert result["geo_check_status"] == "FAIL"
+    assert result["geo_check_reason"] == "null_island"
+
+
+def test_identical_lat_long():
+    result = curate_biosample(make_sample(45.0, 45.0))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "identical_lat_long"
+
+
+def test_coordinates_suspiciously_round():
+    result = curate_biosample(make_sample(55.0, 8.0))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "coordinates_suspiciously_round"
+
+
+def test_implausibly_precise():
+    result = curate_biosample(make_sample(55.1234567, 8.1234567))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "implausibly_precise"
+
+
+def test_centroid_or_capital():
+    # Kabul, Afghanistan capital from reference file
+    result = curate_biosample(make_sample(34.52, 69.18))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "centroid_or_capital"
+
+
+def test_null_island_takes_priority_over_identical():
+    # 0.0 == 0.0 but Null Island check comes first
+    result = curate_biosample(make_sample(0.0, 0.0))
+    assert result["geo_check_reason"] == "null_island"
+
+
+def test_valid_coordinates_pass():
+    # Normal Danish coordinates should pass through all checks
+    result = curate_biosample(make_sample(55.62115, 8.2849, "Denmark"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match"
+
+
+# ── Coordinate precision ───────────────────────────────────────────────────
+
+def test_coord_precision_deg():
+    # lat has 5 dp, lon has 4 dp — worst is 4
+    result = curate_biosample(make_sample(55.62115, 8.2849))
+    assert result["coord_precision_deg"] == 0.0001
+
+
+def test_coord_precision_none_when_no_coords():
+    sample = {"characteristics": {"lat_lon": [{"text": "NA"}]}}
+    result = curate_biosample(sample)
+    assert result["coord_precision_deg"] is None
+
+
+# ── DMS parsing ────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("lat_lon_str, expected_lat, expected_lon, expected_precision", [
+    ("55° 37' 17.94\" N 8° 17' 5.64\" E", 55.62165, 8.28490, pytest.approx(1/3600, rel=1e-3)),
+    ("55 37 17.94 N 8 17 5.64 E",          55.62165, 8.28490, pytest.approx(1/3600, rel=1e-3)),
+    ("55° 37' N 8° 17' E",                 55.61667, 8.28333, pytest.approx(1/60,   rel=1e-3)),
+    ("55° N 8° E",                         55.0,     8.0,     1.0),
+])
+def test_parse_dms(lat_lon_str, expected_lat, expected_lon, expected_precision):
+    sample = {"characteristics": {"lat_lon": [{"text": lat_lon_str}]}}
+    result = curate_biosample(sample)
+    assert result["latitude"] == pytest.approx(expected_lat, abs=1e-4)
+    assert result["longitude"] == pytest.approx(expected_lon, abs=1e-4)
+    assert result["coord_precision_deg"] == expected_precision
