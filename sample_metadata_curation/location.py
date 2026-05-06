@@ -71,10 +71,14 @@ class LocationCurator:
 
         self.mapping_csv = resources_dir / "country_to_cc_mapping.csv"
         self.oceans_txt = resources_dir / "oceans_and_seas.txt"
-        self.centroids_and_capitals_csv = resources_dir / "country_centroids_and_capitals.csv"
+        self.centroids_and_capitals_csv = (
+            resources_dir / "country_centroids_and_capitals.csv"
+        )
         self.name_to_cc = self.load_country_mapping()
         self.oceans_and_seas = self.load_oceans_and_seas()
-        self.reference_coords = self.load_reference_coords(self.centroids_and_capitals_csv)
+        self.reference_coords = self.load_reference_coords(
+            self.centroids_and_capitals_csv
+        )
 
     def load_oceans_and_seas(self) -> set:
         oceans = set()
@@ -86,15 +90,17 @@ class LocationCurator:
                         oceans.add(name)
         return oceans
 
-# Loads country and province centroids and capitals
+    # Loads country and province centroids and capitals
     @staticmethod
     def load_reference_coords(csv_path: Path) -> List[Tuple[float, float]]:
         coords = []
         with csv_path.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                for lat_col, lon_col in [("centroid.lat", "centroid.lon"),
-                                         ("capital.lat", "capital.lon")]:
+                for lat_col, lon_col in [
+                    ("centroid.lat", "centroid.lon"),
+                    ("capital.lat", "capital.lon"),
+                ]:
                     try:
                         coords.append((float(row[lat_col]), float(row[lon_col])))
                     except (ValueError, TypeError):
@@ -118,9 +124,14 @@ class LocationCurator:
         return decimal
 
     @staticmethod
-    def _dms_precision_deg(lat_min: Optional[str], lat_sec: Optional[str],
-                           lon_min: Optional[str], lon_sec: Optional[str]) -> float:
+    def _dms_precision_deg(
+        lat_min: Optional[str],
+        lat_sec: Optional[str],
+        lon_min: Optional[str],
+        lon_sec: Optional[str],
+    ) -> float:
         """Determine precision from which DMS components are present."""
+
         def component_precision(min_str, sec_str):
             if sec_str is not None:
                 return 1 / 3600
@@ -134,25 +145,26 @@ class LocationCurator:
             component_precision(lon_min, lon_sec),
         )
 
-# Finds number of decimals for precision tests
+    # Finds number of decimals for precision tests
     @staticmethod
     def _decimal_places(v: float) -> int:
         return len(str(v).rstrip("0").split(".")[-1])
 
-# Finds the precision in the coordinates (stripping trailing zeroes)
+    # Finds the precision in the coordinates (stripping trailing zeroes)
     @staticmethod
     def _coord_precision_deg(latitude: float, longitude: float) -> float:
         dp = min(
             len(str(abs(latitude)).rstrip("0").split(".")[-1]),
-            len(str(abs(longitude)).rstrip("0").split(".")[-1])
+            len(str(abs(longitude)).rstrip("0").split(".")[-1]),
         )
-        return 10 ** -dp
+        return 10**-dp
 
     def _is_centroid_or_capital(
         self, latitude: float, longitude: float, threshold_deg: float = 0.01
     ) -> bool:
         return any(
-            abs(latitude - lat) <= threshold_deg and abs(longitude - lon) <= threshold_deg
+            abs(latitude - lat) <= threshold_deg
+            and abs(longitude - lon) <= threshold_deg
             for lat, lon in self.reference_coords
         )
 
@@ -305,6 +317,10 @@ class LocationCurator:
             out["geo_check_reason"] = "no_coordinates"
             return out
 
+        # Always run reverse geocoder if we have coordinates
+        reverse_cc = reverse_country_code(latitude, longitude)
+        out["reverse_country_code"] = reverse_cc
+
         if latitude == 0.0 and longitude == 0.0:
             out["geo_check_status"] = "FAIL"
             out["geo_check_reason"] = "null_island"
@@ -329,9 +345,6 @@ class LocationCurator:
             out["geo_check_status"] = "WARN"
             out["geo_check_reason"] = "centroid_or_capital"
             return out
-
-        reverse_cc = reverse_country_code(latitude, longitude)
-        out["reverse_country_code"] = reverse_cc
 
         if not reported_cc:
             out["geo_check_status"] = "SKIP"
@@ -390,19 +403,37 @@ class LocationCurator:
                 if m:
                     lat = self._dms_to_decimal(
                         float(m.group("lat_deg").replace(",", ".")),
-                        float(m.group("lat_min").replace(",", ".")) if m.group("lat_min") else 0.0,
-                        float(m.group("lat_sec").replace(",", ".")) if m.group("lat_sec") else 0.0,
+                        (
+                            float(m.group("lat_min").replace(",", "."))
+                            if m.group("lat_min")
+                            else 0.0
+                        ),
+                        (
+                            float(m.group("lat_sec").replace(",", "."))
+                            if m.group("lat_sec")
+                            else 0.0
+                        ),
                         m.group("lat_dir"),
                     )
                     lon = self._dms_to_decimal(
                         float(m.group("lon_deg").replace(",", ".")),
-                        float(m.group("lon_min").replace(",", ".")) if m.group("lon_min") else 0.0,
-                        float(m.group("lon_sec").replace(",", ".")) if m.group("lon_sec") else 0.0,
+                        (
+                            float(m.group("lon_min").replace(",", "."))
+                            if m.group("lon_min")
+                            else 0.0
+                        ),
+                        (
+                            float(m.group("lon_sec").replace(",", "."))
+                            if m.group("lon_sec")
+                            else 0.0
+                        ),
                         m.group("lon_dir"),
                     )
                     result["coord_precision_deg"] = self._dms_precision_deg(
-                        m.group("lat_min"), m.group("lat_sec"),
-                        m.group("lon_min"), m.group("lon_sec"),
+                        m.group("lat_min"),
+                        m.group("lat_sec"),
+                        m.group("lon_min"),
+                        m.group("lon_sec"),
                     )
 
         # Individual fields if not found yet

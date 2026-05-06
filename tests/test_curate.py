@@ -1,6 +1,7 @@
 # test_parser.py
-import pytest
 from pathlib import Path
+
+import pytest
 
 from sample_metadata_curation.curate import curate_biosample
 
@@ -229,6 +230,7 @@ def test_ocean_swapping_skipped():
 
 # ── Coordinate quality checks ──────────────────────────────────────────────
 
+
 def test_null_island():
     result = curate_biosample(make_sample(0.0, 0.0))
     assert result["geo_check_status"] == "FAIL"
@@ -275,6 +277,7 @@ def test_valid_coordinates_pass():
 
 # ── Coordinate precision ───────────────────────────────────────────────────
 
+
 def test_coord_precision_deg():
     # lat has 5 dp, lon has 4 dp — worst is 4
     result = curate_biosample(make_sample(55.62115, 8.2849))
@@ -289,12 +292,26 @@ def test_coord_precision_none_when_no_coords():
 
 # ── DMS parsing ────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("lat_lon_str, expected_lat, expected_lon, expected_precision", [
-    ("55° 37' 17.94\" N 8° 17' 5.64\" E", 55.62165, 8.28490, pytest.approx(1/3600, rel=1e-3)),
-    ("55 37 17.94 N 8 17 5.64 E",          55.62165, 8.28490, pytest.approx(1/3600, rel=1e-3)),
-    ("55° 37' N 8° 17' E",                 55.61667, 8.28333, pytest.approx(1/60,   rel=1e-3)),
-    ("55° N 8° E",                         55.0,     8.0,     1.0),
-])
+
+@pytest.mark.parametrize(
+    "lat_lon_str, expected_lat, expected_lon, expected_precision",
+    [
+        (
+            "55° 37' 17.94\" N 8° 17' 5.64\" E",
+            55.62165,
+            8.28490,
+            pytest.approx(1 / 3600, rel=1e-3),
+        ),
+        (
+            "55 37 17.94 N 8 17 5.64 E",
+            55.62165,
+            8.28490,
+            pytest.approx(1 / 3600, rel=1e-3),
+        ),
+        ("55° 37' N 8° 17' E", 55.61667, 8.28333, pytest.approx(1 / 60, rel=1e-3)),
+        ("55° N 8° E", 55.0, 8.0, 1.0),
+    ],
+)
 def test_parse_dms(lat_lon_str, expected_lat, expected_lon, expected_precision):
     sample = {"characteristics": {"lat_lon": [{"text": lat_lon_str}]}}
     result = curate_biosample(sample)
