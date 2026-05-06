@@ -1,9 +1,10 @@
-import requests
-import json
-import time
-import pandas as pd
-from sample_metadata_curation.curate import curate_biosample
 import random
+import time
+
+import pandas as pd
+import requests
+
+from sample_metadata_curation.curate import curate_biosample
 
 random.seed(43)
 organism_types = [
@@ -64,15 +65,15 @@ for acc in accessions:
 df = pd.DataFrame(results)
 df.to_csv("curated_real_samples_test.csv", index=False)
 print(f"\nSaved {len(df)} samples to curated_real_samples_test.csv")
-print(f"\n=== Summary ===")
+print("\n=== Summary ===")
 print(f"Total samples: {len(df)}")
 
-print(f"\nGeo check status:")
+print("\nGeo check status:")
 status_counts = df["geo_check_status"].value_counts()
 for status, count in status_counts.items():
     print(f"  {status}: {count} ({count/len(df)*100:.1f}%)")
 
-print(f"\nGeo check reason:")
+print("\nGeo check reason:")
 reason_counts = df["geo_check_reason"].value_counts()
 for reason, count in reason_counts.items():
     print(f"  {reason}: {count} ({count/len(df)*100:.1f}%)")
