@@ -25,7 +25,7 @@ for organism in organism_types:
             "term": f'"lat lon"[All Fields] AND {organism}',
             "retmax": 1000,  # fetch more so we can pick randomly
             "retmode": "json",
-        }
+        },
     )
     ids = response.json()["esearchresult"]["idlist"]
     # Pick 10 random IDs from each organism type
@@ -37,7 +37,7 @@ for organism in organism_types:
             "db": "biosample",
             "id": ",".join(sampled_ids),
             "retmode": "json",
-        }
+        },
     )
     summary_data = summary_response.json()
     for uid in sampled_ids:
