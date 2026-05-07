@@ -1,10 +1,13 @@
 import csv
+import io
 import logging
+import zipfile
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from xml.etree import ElementTree
 
 import pandas as pd
+import pyreadr
 import requests
 
 from sample_metadata_curation.constants import (
@@ -23,6 +26,13 @@ RG_URL = (
     "https://raw.githubusercontent.com/thampiman/reverse-geocoder/master"
     "/reverse_geocoder/rg_cities1000.csv"
 )
+COORDINATE_CLEANER_URL = (
+    "https://github.com/ropensci/CoordinateCleaner/raw/"
+    "9195fb64154dd20a921a412b5e4d24cc18d3803c/data/countryref.rda"
+)
+ROR_URL = (
+    "https://zenodo.org/records/19576723/files/v2.6-2026-04-14-ror-data.zip?download=1"
+)
 
 
 def get_checklist_countries():
@@ -34,7 +44,16 @@ def get_checklist_countries():
         response_ena = requests.get(ENA_URL)
         logging.info("Downloading RG country list...")
         response_rg = requests.get(RG_URL)
-        return response_ena.text, response_rg.text
+        logging.info("Downloading CoordinateCleaner country reference...")
+        response_cc = requests.get(COORDINATE_CLEANER_URL)
+        logging.info("Downloading ROR institution data...")
+        response_ror = requests.get(ROR_URL)
+        return (
+            response_ena.text,
+            response_rg.text,
+            response_cc.content,
+            response_ror.content,
+        )
     except Exception as e:
         logging.error(f"Error downloading country lists: {e}")
 
@@ -93,6 +112,52 @@ def parse_iso_country_codes(iso_cc: Path) -> Dict[str, Tuple[str, str]]:
     }
 
     return mapping
+
+
+def parse_coordinate_cleaner_ref(rda_bytes: bytes) -> pd.DataFrame:
+    """
+    Parse CoordinateCleaner countryref.rda and return a DataFrame
+    with centroid and capital coordinates per country.
+    """
+    result = pyreadr.read_r(io.BytesIO(rda_bytes))
+    df = result[list(result.keys())[0]]
+
+    # Select and rename relevant columns
+    df = df[["iso3", "centroid.lon", "centroid.lat", "capital.lon", "capital.lat"]]
+
+    return df
+
+
+def parse_ror_institutions(ror_bytes: bytes) -> pd.DataFrame:
+    """
+    Parse ROR data dump and return a DataFrame with institution
+    name, country code, and coordinates.
+    """
+    # ROR data dump is a zip file containing a CSV
+    with zipfile.ZipFile(io.BytesIO(ror_bytes)) as z:
+        # Find the CSV file inside the zip
+        csv_files = [f for f in z.namelist() if f.endswith(".csv")]
+        logging.info(f"Files in ROR zip: {z.namelist()}")
+        with z.open(csv_files[0]) as f:
+            df = pd.read_csv(f)
+
+    df = df[
+        [
+            "names.types.ror_display",
+            "locations.geonames_details.country_code",
+            "locations.geonames_details.lat",
+            "locations.geonames_details.lng",
+        ]
+    ].rename(
+        columns={
+            "names.types.ror_display": "institution_name",
+            "locations.geonames_details.country_code": "country_code",
+            "locations.geonames_details.lat": "latitude",
+            "locations.geonames_details.lng": "longitude",
+        }
+    )
+    df = df.dropna(subset=["latitude", "longitude"])
+    return df
 
 
 def create_final_cc_mapping(
@@ -209,7 +274,8 @@ def main():
     if not country_codes.exists():
         logging.error(f"country-codes.csv not found in {resource_dir}. Exiting...")
         return
-    ena_xml, rg_csv = get_checklist_countries()
+
+    ena_xml, rg_csv, cc_rda, ror_bytes = get_checklist_countries()
 
     ena_countries = parse_ena_xml(ena_xml)
     logging.info(f"{len(ena_countries)} countries found in ENA checklist")
@@ -218,6 +284,8 @@ def main():
 
     final_mapping_path = resource_dir / "country_to_cc_mapping.csv"
     oceans_and_seas_path = resource_dir / "oceans_and_seas.txt"
+    centroids_and_capitals_path = resource_dir / "country_centroids_and_capitals.csv"
+
     final_mapping, oceans_and_seas = create_final_cc_mapping(
         ena_countries, rg_cc, iso_cc
     )
@@ -233,6 +301,20 @@ def main():
             writer.writerow([key, value[0], value[1]])
     with open(oceans_and_seas_path, "w") as f:
         f.writelines("\n".join(oceans_and_seas))
+
+    centroids_df = parse_coordinate_cleaner_ref(cc_rda)
+    centroids_df.to_csv(centroids_and_capitals_path, index=False)
+    logging.info(
+        f"{len(centroids_df)} centroid/capital records saved to "
+        f"{centroids_and_capitals_path}"
+    )
+
+    institutions_path = resource_dir / "research_institutions.csv"
+    institutions_df = parse_ror_institutions(ror_bytes)
+    institutions_df.to_csv(institutions_path, index=False)
+    logging.info(
+        f"{len(institutions_df)} institution records saved to {institutions_path}"
+    )
 
     logging.info("Mapping complete")
 
