@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import csv
+import urllib.error
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,6 +12,12 @@ from sample_metadata_curation.sample_parser import (
     load_json,
     parse_arguments,
     standardise_keys,
+)
+
+from sample_metadata_curation.download_ebi_biosamples_json import(
+    read_accessions,
+    download_biosample_json,
+    save_json
 )
 
 
@@ -122,6 +129,79 @@ def save_curated_tsv(result, output_path):
         writer.writeheader()
         writer.writerows(rows)
 
+def download_and_curate_biosamples(biosample_list, download_json_outdir, biome_keys=None, overwrite_downloads=False):
+    """
+    Download raw EBI BioSamples JSON records from a list of BioSample accessions and curate each downloaded sample.
+
+    Returns
+    -------
+    results : list of dict
+        Curated metadata records.
+
+    failures : list of dict
+        Accessions that could not be downloaded or curated.
+    """
+
+    accessions = read_accessions(biosample_list)
+
+    if not accessions:
+        raise ValueError(f"No BioSample accession found in {biosample_list}")
+
+    outdir = Path(download_json_outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    results = []
+    failures = []
+
+    for accession in accessions:
+        raw_json_path = outdir / f"{accession}.json"
+
+        try:
+            if raw_json_path.exists() and not overwrite_downloads:
+                sample_json = load_json(raw_json_path)
+            else: 
+                sample_json = download_biosample_json(accession)
+                save_json(sample_json, raw_json_path)
+
+            curated = curate_biosample(sample_json, biome_keys=biome_keys)
+
+            if curated:
+                results.append(curated)
+            else:
+                failures.append(
+                    {
+                        "accession": accession,
+                        "error": "curation returned empty result",
+                    }
+                )
+
+        except urllib.error.HTTPError as error:
+            failures.append(
+                {
+                    "accession": accession,
+                    "error": f"HTTP {error.code}",
+                }
+            )
+
+        except urllib.error.URLError as error:
+            failures.append(
+                {
+                    "accession": accession,
+                    "error": str(error),
+                }
+            )
+
+        except Exception as error:
+            failures.append(
+                {
+                    "accession": accession,
+                    "error": str(error),
+                }
+            )
+
+    return results, failures    
+               
+
 
 def main():
     args = parse_arguments()
@@ -178,8 +258,42 @@ def main():
 
         return
 
+    if args.biosample_list:
+        if not args.download_json_outdir:
+            print(
+                "ERROR: --download-json-outdir is required when using --biosample-list",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        results, failures = download_and_curate_biosamples(
+            biosample_list=args.biosample_list,
+            download_json_outdir=args.download_json_outdir,
+            biome_keys=biome_keys,
+            overwrite_downloads=args.overwrite_downloads,
+        )
+
+        if args.output_json:
+            save_curated_json(results, args.output_json)
+            print(f"Curated metadata JSON saved to: {args.output_json}")
+
+        if args.output_tsv:
+            save_curated_tsv(results, args.output_tsv)
+            print(f"Curated metadata TSV saved to: {args.output_tsv}")
+
+        if not args.output_json and not args.output_tsv:
+            print(json.dumps(results, indent=2, ensure_ascii=False))
+
+        if failures:
+            print(
+                f"WARNING: {len(failures)} BioSample accessions failed.",
+                file=sys.stderr,
+            )
+
+        return
+
     print(
-        "ERROR: provide either --sample-json or --json-dir",
+        "ERROR: provide one of --sample-json, --json-dir, or --biosample-list",
         file=sys.stderr,
     )
     sys.exit(1)   

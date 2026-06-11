@@ -94,6 +94,27 @@ def parse_arguments():
         help="Optional path to save the curated metada as a TSV file."
     )
 
+    parser.add_argument(
+        "--biosample-list",
+        required=False,
+        help="Text file with one BioSample accession per line to download and curate.",
+    )
+
+    parser.add_argument(
+        "--download-json-outdir",
+        required=False,
+        help=(
+            "Directory where downloaded raw EBI BioSamples JSON files wil be saved."
+            "Required when using --biosample-list"
+        )
+    ),
+
+    parser.add_argument(
+        "--overwrite-downloads",
+        action="store_true",
+        help="Overwrite existing downloaded raw BioSamples JSON files."
+    )
+
 
     return parser.parse_args()
 
