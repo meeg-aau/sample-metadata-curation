@@ -57,9 +57,15 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-j",
-        "--sample_json",
-        required=True,
+        "--sample-json",
+        required=False,
         help="BioSample API JSON output or path to JSON file",
+    )
+
+    parser.add_argument(
+        "--json-dir",
+        required=False,
+        help="Directory containing raw BioSamples JSON files to curate in batch.",
     )
     parser.add_argument(
         "-cc",

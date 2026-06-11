@@ -79,11 +79,47 @@ def curate_biosample(
 def main():
     args = parse_arguments()
     biome_keys = args.biome.split(",") if args.biome else None
-    result = curate_biosample(args.sample_json, biome_keys=biome_keys)
-    if result:
-        print(json.dumps(result, indent=2))
-    else:
-        sys.exit(1)
+    
+    if args.sample_json:
+        result = curate_biosample(args.sample_json, biome_keys=biome_keys)
+
+        if result:
+            print(json.dumps(result, indent=2))
+        else:
+            sys.exit((1))
+
+        return
+
+    if args.json_dir:
+        json_dir = Path(args.json_dir)
+
+        if not json_dir.exists():
+            print(f"ERROR: JSON directory not found: {json_dir}", file=sys.stderr)
+
+        json_files = sorted(json_dir.glob("*.json"))
+
+        if not json_files:
+            print(f"ERROR: no .json files found in {json_dir}", file=sys.stderr)
+            sys.exists(1)
+
+        results = []
+
+        for json_file in json_files:
+            result = curate_biosample(str(json_file), biome_keys=biome_keys)
+
+            if result:
+                results.append(result)
+
+        print(json.dumps(results, indent=2))
+
+        return
+
+    print(
+        "ERROR: provide either --sample-json or --json-dir",
+        file=sys.stderr,
+    )
+    sys.exit(1)   
+  
 
 
 if __name__ == "__main__":
