@@ -88,7 +88,13 @@ def parse_arguments():
         help="Optional path to save the curated metadata as a JSON file"
     )
 
-    
+    parser.add_argument(
+        "--output-tsv",
+        required=False,
+        help="Optional path to save the curated metada as a TSV file."
+    )
+
+
     return parser.parse_args()
 
 

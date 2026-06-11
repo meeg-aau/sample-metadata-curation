@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -87,6 +88,40 @@ def save_curated_json(result, output_path):
     with open(output_path, "w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2, ensure_ascii=False)
 
+def save_curated_tsv(result, output_path):
+    """
+    Save curated metadata as a TSV file.
+
+    If a single sample dictionary os provided, it is converted to a one-row table. 
+    If a list of dictionaries is provided, all observed keys are used as columns.
+    """
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(result, dict):
+        rows = [result]
+    else:
+        rows = result
+
+    if not rows:
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write("")
+            return
+
+    fieldnames = sorted({key for row in rows for key in row.keys()})
+
+    with open(output_path, "w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            delimiter="\t",
+            extrasaction="ignore",
+        )
+
+        writer.writeheader()
+        writer.writerows(rows)
+
 
 def main():
     args = parse_arguments()
@@ -101,10 +136,15 @@ def main():
         if args.output_json:
             save_curated_json(result, args.output_json)
             print(f"Curated metadata saved to: {args.output_json}")
-        else:
-            print(json.dumps(result, indent=2, ensure_ascii=False))
 
-        return
+        if args.output_tsv:
+            save_curated_tsv(result, args.output_tsv)
+            print(f"Curated metadata TSV saved to: {args.output_tsv}")
+
+        if not args.output_json and not args.output_tsv:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+       
+        return 
 
     if args.json_dir:
         json_dir = Path(args.json_dir)
@@ -129,7 +169,11 @@ def main():
         if args.output_json:
             save_curated_json(results, args.output_json)
             print(f"Curated metadata saved to: {args.output_json}")
-        else:
+        if args.output_tsv:
+            save_curated_tsv(results, args.output_tsv)
+            print(f"Curated metadata TSV saved to: {args.output_tsv}")
+
+        if not args.output_json and not args.output_tsv:
             print(json.dumps(results, indent=2, ensure_ascii=False))
 
         return
