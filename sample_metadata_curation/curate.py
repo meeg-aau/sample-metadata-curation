@@ -76,6 +76,18 @@ def curate_biosample(
     return curator.curate_sample(sample_json)
 
 
+def save_curated_json(result, output_path):
+    """
+    Save curated matadata as a JSON file.
+    """
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as handle:
+        json.dump(result, handle, indent=2, ensure_ascii=False)
+
+
 def main():
     args = parse_arguments()
     biome_keys = args.biome.split(",") if args.biome else None
@@ -83,10 +95,14 @@ def main():
     if args.sample_json:
         result = curate_biosample(args.sample_json, biome_keys=biome_keys)
 
-        if result:
-            print(json.dumps(result, indent=2))
+        if not result:
+            sys.exit(1)
+
+        if args.output_json:
+            save_curated_json(result, args.output_json)
+            print(f"Curated metadata saved to: {args.output_json}")
         else:
-            sys.exit((1))
+            print(json.dumps(result, indent=2, ensure_ascii=False))
 
         return
 
@@ -110,7 +126,11 @@ def main():
             if result:
                 results.append(result)
 
-        print(json.dumps(results, indent=2))
+        if args.output_json:
+            save_curated_json(results, args.output_json)
+            print(f"Curated metadata saved to: {args.output_json}")
+        else:
+            print(json.dumps(results, indent=2, ensure_ascii=False))
 
         return
 

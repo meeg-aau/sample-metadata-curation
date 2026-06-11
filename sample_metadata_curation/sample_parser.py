@@ -81,6 +81,14 @@ def parse_arguments():
         required=False,
         help="Comma separated list of keys to extract as biome",
     )
+
+    parser.add_argument(
+        "--output-json",
+        required=False,
+        help="Optional path to save the curated metadata as a JSON file"
+    )
+
+    
     return parser.parse_args()
 
 
