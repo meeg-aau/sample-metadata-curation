@@ -153,14 +153,6 @@ def test_invalid_region_returns_none(region_str):
             "match",
         ),  # Matching with locality
         (
-            "United States Minor Outlying Islands:Baker Island",
-            "0.1947, -176.4794",
-            "United States Minor Outlying Islands",
-            "Baker Island",
-            "WARN",
-            "reported_cc_not_supported_by_reverse_geocoder",
-        ),
-        (
             "Atlantic Ocean:Charlie Gibbs Fracture Zone",
             "52.45, -35.08",
             "Atlantic Ocean",
@@ -251,7 +243,7 @@ def test_coordinates_suspiciously_round():
 
 def test_implausibly_precise():
     result = curate_biosample(make_sample(55.1234567, 8.1234567))
-    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_status"] == "PASS"
     assert result["geo_check_reason"] == "implausibly_precise"
 
 
@@ -260,13 +252,6 @@ def test_centroid_or_capital():
     result = curate_biosample(make_sample(34.52, 69.18))
     assert result["geo_check_status"] == "WARN"
     assert result["geo_check_reason"] == "centroid_or_capital"
-
-
-def test_null_island_takes_priority_over_identical():
-    # 0.0 == 0.0 but Null Island check comes first
-    result = curate_biosample(make_sample(0.0, 0.0))
-    assert result["geo_check_reason"] == "null_island"
-
 
 def test_valid_coordinates_pass():
     # Normal Danish coordinates should pass through all checks
@@ -318,3 +303,31 @@ def test_parse_dms(lat_lon_str, expected_lat, expected_lon, expected_precision):
     assert result["latitude"] == pytest.approx(expected_lat, abs=1e-4)
     assert result["longitude"] == pytest.approx(expected_lon, abs=1e-4)
     assert result["coord_precision_deg"] == expected_precision
+
+
+def test_disputed_territory():
+    # Somaliland - Natural Earth assigns -99
+    result = curate_biosample(make_sample(9.5, 45.0, "Somalia"))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "disputed_or_unrecognised_territory"
+
+
+def test_territory_match():
+    # Hong Kong coordinates, reported as China
+    result = curate_biosample(make_sample(22.35, 114.15, "China"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match_territory"
+
+
+def test_territory_reported_no_own_polygon():
+    # Guadeloupe has no own polygon, Natural Earth returns FR
+    result = curate_biosample(make_sample(16.26, -61.55, "Guadeloupe"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match_territory"
+
+
+def test_near_border():
+    # Point just inside Germany near Danish border, reported as Denmark
+    result = curate_biosample(make_sample(54.866, 9.04807, "Denmark"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match_near_border"

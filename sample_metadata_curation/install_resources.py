@@ -3,7 +3,7 @@ import io
 import logging
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 from xml.etree import ElementTree
 
 import pandas as pd
@@ -14,7 +14,6 @@ from sample_metadata_curation.constants import (
     MISSING_COUNTRY_MAPPING,
     MISSING_VALUES,
     NON_COUNTRIES,
-    REVERSE_GEOCODER_MISSING_CC,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -22,16 +21,15 @@ logging = logging.getLogger()
 
 
 ENA_URL = "https://www.ebi.ac.uk/ena/browser/api/xml/ERC000011?download=true"
-RG_URL = (
-    "https://raw.githubusercontent.com/thampiman/reverse-geocoder/master"
-    "/reverse_geocoder/rg_cities1000.csv"
-)
 COORDINATE_CLEANER_URL = (
     "https://github.com/ropensci/CoordinateCleaner/raw/"
     "9195fb64154dd20a921a412b5e4d24cc18d3803c/data/countryref.rda"
 )
 ROR_URL = (
     "https://zenodo.org/records/19576723/files/v2.6-2026-04-14-ror-data.zip?download=1"
+)
+NATURAL_EARTH_URL = (
+    "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
 )
 
 
@@ -42,17 +40,17 @@ def get_checklist_countries():
     try:
         logging.info("Downloading ENA country list...")
         response_ena = requests.get(ENA_URL)
-        logging.info("Downloading RG country list...")
-        response_rg = requests.get(RG_URL)
         logging.info("Downloading CoordinateCleaner country reference...")
         response_cc = requests.get(COORDINATE_CLEANER_URL)
         logging.info("Downloading ROR institution data...")
         response_ror = requests.get(ROR_URL)
+        logging.info("Downloading Natural Earth country boundaries...")
+        response_ne = requests.get(NATURAL_EARTH_URL)
         return (
             response_ena.text,
-            response_rg.text,
             response_cc.content,
             response_ror.content,
+            response_ne.content,
         )
     except Exception as e:
         logging.error(f"Error downloading country lists: {e}")
@@ -87,17 +85,6 @@ def parse_ena_xml(ena_xml: str) -> List[str]:
         return []
 
 
-def parse_rg_country_codes(rg: str) -> Set[str]:
-    """
-    Parse countries included in reverse_geocoder
-    """
-    rg_cc_unique = set()
-    for line in rg.splitlines()[1:]:
-        cc = line.split(",")[-1]
-        rg_cc_unique.add(cc)
-    return rg_cc_unique
-
-
 def parse_iso_country_codes(iso_cc: Path) -> Dict[str, Tuple[str, str]]:
     """
     Parse ISO countries and 2 letter codes
@@ -122,8 +109,7 @@ def parse_coordinate_cleaner_ref(rda_bytes: bytes) -> pd.DataFrame:
     result = pyreadr.read_r(io.BytesIO(rda_bytes))
     df = result[list(result.keys())[0]]
 
-    # Select and rename relevant columns
-    df = df[["iso3", "centroid.lon", "centroid.lat", "capital.lon", "capital.lat"]]
+    df = df[["iso2", "centroid.lon", "centroid.lat", "capital.lon", "capital.lat"]]
 
     return df
 
@@ -160,9 +146,17 @@ def parse_ror_institutions(ror_bytes: bytes) -> pd.DataFrame:
     return df
 
 
+def save_natural_earth(ne_bytes: bytes, output_path: Path) -> None:
+    """
+    Save Natural Earth zip directly to resources — geopandas reads it natively.
+    """
+    with open(output_path, "wb") as f:
+        f.write(ne_bytes)
+    logging.info(f"Natural Earth boundaries saved to {output_path}")
+
+
 def create_final_cc_mapping(
     ena_countries: List[str],
-    rg_cc: Set[str],
     iso_cc: Dict[str, Tuple[str, str]],
 ) -> tuple[Dict[str, list], List[str]]:
 
@@ -196,13 +190,7 @@ def create_final_cc_mapping(
         # Normal case: ISO code exists
         if iso_code != "-" and isinstance(iso_code, str) and iso_code.strip():
             cc = iso_code.split("|")[0].strip()
-            if cc in rg_cc or cc in REVERSE_GEOCODER_MISSING_CC:
-                final_mapping[original_country] = [country, cc]
-            else:
-                logging.warning(
-                    f"Warning: ISO code {cc} for {country} "
-                    "not found in reverse_geocoder"
-                )
+            final_mapping[original_country] = [country, cc]
             continue
 
         # Sometimes mapped to another country code with string:
@@ -249,13 +237,6 @@ def create_final_cc_mapping(
             continue
 
         cc = ref_iso_code.split("|")[0].strip()
-        if cc in rg_cc or cc in REVERSE_GEOCODER_MISSING_CC:
-            final_mapping[original_country] = [reference_country, cc]
-        else:
-            logging.warning(
-                f"Warning: reference ISO code {cc} for {reference_country} "
-                f"not found in reverse_geocoder (from {country})"
-            )
 
     return final_mapping, oceans_and_seas
 
@@ -275,20 +256,17 @@ def main():
         logging.error(f"country-codes.csv not found in {resource_dir}. Exiting...")
         return
 
-    ena_xml, rg_csv, cc_rda, ror_bytes = get_checklist_countries()
+    ena_xml, cc_rda, ror_bytes, ne_bytes = get_checklist_countries()
 
     ena_countries = parse_ena_xml(ena_xml)
     logging.info(f"{len(ena_countries)} countries found in ENA checklist")
-    rg_cc = parse_rg_country_codes(rg_csv)
     iso_cc = parse_iso_country_codes(country_codes)
 
     final_mapping_path = resource_dir / "country_to_cc_mapping.csv"
     oceans_and_seas_path = resource_dir / "oceans_and_seas.txt"
     centroids_and_capitals_path = resource_dir / "country_centroids_and_capitals.csv"
 
-    final_mapping, oceans_and_seas = create_final_cc_mapping(
-        ena_countries, rg_cc, iso_cc
-    )
+    final_mapping, oceans_and_seas = create_final_cc_mapping(ena_countries, iso_cc)
 
     # Ensure all missing country mappings are included
     for original, mapped in MISSING_COUNTRY_MAPPING.items():
@@ -315,7 +293,8 @@ def main():
     logging.info(
         f"{len(institutions_df)} institution records saved to {institutions_path}"
     )
-
+    natural_earth_path = resource_dir / "ne_countries.zip"
+    save_natural_earth(ne_bytes, natural_earth_path)
     logging.info("Mapping complete")
 
 

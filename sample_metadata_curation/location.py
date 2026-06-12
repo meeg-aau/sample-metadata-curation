@@ -3,12 +3,14 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import reverse_geocode
+import geopandas as gpd
+from shapely.geometry import Point
 
 from sample_metadata_curation.constants import (
     LOCATION_KEYS,
     MISSING_VALUES,
-    REVERSE_GEOCODER_MISSING_CC,
+    SMALL_ISLAND_CC,
+    TERRITORY_TO_PARENT_CC,
 )
 
 """
@@ -31,6 +33,11 @@ LATLON_COORD_RE = re.compile(
 )
 
 # In case coordinates are given in degrees-minutes-seconds format
+"""
+match = 55° 37' 17.94" N 8° 17' 5.64" E
+lat_deg = 55, lat_min = 37, lat_sec = 17.94, lat_dir = N
+lon_deg = 8, lon_min = 17, lon_sec = 5.64, lon_dir = E
+"""
 DMS_COORD_RE = re.compile(
     r"""
     ^\s*
@@ -51,16 +58,6 @@ DMS_COORD_RE = re.compile(
 REJECTED_LOCATION_CHARACTERS = set("@#$%^*=+<>[]{}|\\~")
 
 
-def reverse_country_code(latitude: float, longitude: float) -> Optional[str]:
-    try:
-        hit = reverse_geocode.get((latitude, longitude))
-        if not hit:
-            return None
-        return hit.get("country_code")
-    except AssertionError:
-        return None
-
-
 class LocationCurator:
     def __init__(
         self,
@@ -74,11 +71,14 @@ class LocationCurator:
         self.centroids_and_capitals_csv = (
             resources_dir / "country_centroids_and_capitals.csv"
         )
+        self.natural_earth_zip = resources_dir / "ne_countries.zip"
         self.name_to_cc = self.load_country_mapping()
         self.oceans_and_seas = self.load_oceans_and_seas()
         self.reference_coords = self.load_reference_coords(
             self.centroids_and_capitals_csv
         )
+        self.countries_gdf = self.load_countries(self.natural_earth_zip)
+        self.countries_gdf_proj = self.countries_gdf.to_crs("EPSG:3857")
 
     def load_oceans_and_seas(self) -> set:
         oceans = set()
@@ -90,19 +90,34 @@ class LocationCurator:
                         oceans.add(name)
         return oceans
 
+    @staticmethod
+    def load_countries(path: Path) -> gpd.GeoDataFrame:
+        """
+        Load Natural Earth country boundaries from zip file.
+        Returns a GeoDataFrame with ISO_A2 and geometry columns.
+        The spatial index is built automatically by geopandas/rtree.
+        """
+        gdf = gpd.read_file(path)[["ISO_A2_EH", "geometry"]]
+        return gdf.rename(columns={"ISO_A2_EH": "ISO_A2"})
+
     # Loads country and province centroids and capitals
     @staticmethod
-    def load_reference_coords(csv_path: Path) -> List[Tuple[float, float]]:
+    def load_reference_coords(
+        csv_path: Path,
+    ) -> List[Tuple[float, float, Optional[str]]]:
         coords = []
         with csv_path.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
+                iso2 = row.get("iso2")
+                if not iso2 or iso2.lower() in ("nan", "none", ""):
+                    iso2 = None
                 for lat_col, lon_col in [
                     ("centroid.lat", "centroid.lon"),
                     ("capital.lat", "capital.lon"),
                 ]:
                     try:
-                        coords.append((float(row[lat_col]), float(row[lon_col])))
+                        coords.append((float(row[lat_col]), float(row[lon_col]), iso2))
                     except (ValueError, TypeError):
                         pass
         return coords
@@ -117,11 +132,24 @@ class LocationCurator:
         return abs(value)  # N/E
 
     @staticmethod
-    def _dms_to_decimal(deg: float, min_: float, sec: float, direction: str) -> float:
-        decimal = deg + min_ / 60 + sec / 3600
+    def _dms_to_decimal(
+        degrees: float, minutes: float, seconds: float, direction: str
+    ) -> float:
+        decimal = degrees + minutes / 60 + seconds / 3600
         if direction.upper() in ("S", "W"):
             decimal = -decimal
         return decimal
+
+    @staticmethod
+    def _dms_component_precision(
+        minutes: Optional[str], seconds: Optional[str]
+    ) -> float:
+        """Return precision in degrees based on which DMS components are present."""
+        if seconds is not None:
+            return 1 / 3600
+        elif minutes is not None:
+            return 1 / 60
+        return 1.0
 
     @staticmethod
     def _dms_precision_deg(
@@ -130,19 +158,10 @@ class LocationCurator:
         lon_min: Optional[str],
         lon_sec: Optional[str],
     ) -> float:
-        """Determine precision from which DMS components are present."""
-
-        def component_precision(min_str, sec_str):
-            if sec_str is not None:
-                return 1 / 3600
-            elif min_str is not None:
-                return 1 / 60
-            else:
-                return 1.0
-
+        """Determine precision in degrees from which DMS components are present."""
         return max(
-            component_precision(lat_min, lat_sec),
-            component_precision(lon_min, lon_sec),
+            LocationCurator._dms_component_precision(lat_min, lat_sec),
+            LocationCurator._dms_component_precision(lon_min, lon_sec),
         )
 
     # Finds number of decimals for precision tests
@@ -154,19 +173,50 @@ class LocationCurator:
     @staticmethod
     def _coord_precision_deg(latitude: float, longitude: float) -> float:
         dp = min(
-            len(str(abs(latitude)).rstrip("0").split(".")[-1]),
-            len(str(abs(longitude)).rstrip("0").split(".")[-1]),
+            LocationCurator._decimal_places(abs(latitude)),
+            LocationCurator._decimal_places(abs(longitude)),
         )
         return 10**-dp
 
     def _is_centroid_or_capital(
-        self, latitude: float, longitude: float, threshold_deg: float = 0.01
+        self,
+        latitude: float,
+        longitude: float,
+        reported_cc: Optional[str],
+        threshold_deg: float = 0.01,
     ) -> bool:
         return any(
             abs(latitude - lat) <= threshold_deg
             and abs(longitude - lon) <= threshold_deg
-            for lat, lon in self.reference_coords
+            and (iso2 is None or reported_cc is None or iso2 == reported_cc)
+            for lat, lon, iso2 in self.reference_coords
         )
+
+    def _is_near_border(self, latitude, longitude, reported_cc, threshold_m=10000):
+        point_proj = (
+            gpd.GeoSeries([Point(longitude, latitude)], crs="EPSG:4326")
+            .to_crs("EPSG:3857")
+            .iloc[0]
+        )
+        reported_polygon = self.countries_gdf_proj[
+            self.countries_gdf_proj["ISO_A2"] == reported_cc
+        ]
+        if reported_polygon.empty:
+            return False
+        return reported_polygon.geometry.iloc[0].distance(point_proj) <= threshold_m
+
+    def _polygon_country_code(self, latitude: float, longitude: float) -> Optional[str]:
+        try:
+            point = Point(longitude, latitude)
+            matches = self.countries_gdf[self.countries_gdf.geometry.contains(point)]
+            if matches.empty:
+                return None
+            cc = matches.iloc[0]["ISO_A2"]
+            if cc == "-99":
+                return "XX"  # disputed or unrecognised territory
+            return cc
+        except Exception:
+            return None
 
     def _parse_single_coord(self, value: Any) -> Optional[float]:
         if value is None:
@@ -233,6 +283,10 @@ class LocationCurator:
                     name_to_cc[canonical_name] = cc
         return name_to_cc
 
+    def _territory_has_own_polygon(self, cc: str) -> bool:
+        """Check if a territory has its own polygon in the Natural Earth dataset."""
+        return not self.countries_gdf[self.countries_gdf["ISO_A2"] == cc].empty
+
     def infer_reported_country_code(
         self,
         reported_location: Optional[str],
@@ -287,7 +341,7 @@ class LocationCurator:
         flipped_coords: bool = False,
     ) -> Dict[str, Any]:
         """
-        Check if reported location matches reverse geocoder result.
+        Check if reported location matches polygon-based reverse geocoder result.
         Several levels of reporting to account for mismatches in data sources
         """
         out = {
@@ -317,8 +371,8 @@ class LocationCurator:
             out["geo_check_reason"] = "no_coordinates"
             return out
 
-        # Always run reverse geocoder if we have coordinates
-        reverse_cc = reverse_country_code(latitude, longitude)
+        # Always run polygon lookup if we have coordinates
+        reverse_cc = self._polygon_country_code(latitude, longitude)
         out["reverse_country_code"] = reverse_cc
 
         if latitude == 0.0 and longitude == 0.0:
@@ -337,35 +391,61 @@ class LocationCurator:
             return out
 
         if self._decimal_places(latitude) > 6 or self._decimal_places(longitude) > 6:
-            out["geo_check_status"] = "WARN"
+            out["geo_check_status"] = "PASS"
             out["geo_check_reason"] = "implausibly_precise"
             return out
 
-        if self._is_centroid_or_capital(latitude, longitude):
+        if self._is_centroid_or_capital(latitude, longitude, reported_cc):
             out["geo_check_status"] = "WARN"
             out["geo_check_reason"] = "centroid_or_capital"
             return out
 
+        # Ocean: polygon lookup returns None for points in the sea
+        # unless the reported_cc is a small island or a territory
+        if reverse_cc is None:
+            if reported_cc in SMALL_ISLAND_CC:
+                out["geo_check_status"] = "WARN"
+                out["geo_check_reason"] = "small_island_not_in_reference"
+            elif (
+                reported_cc in TERRITORY_TO_PARENT_CC
+                and not self._territory_has_own_polygon(reported_cc)
+            ):
+                out["geo_check_status"] = "PASS"
+                out["geo_check_reason"] = "match_territory"
+            else:
+                out["geo_check_status"] = "PASS"
+                out["geo_check_reason"] = "ocean_or_sea"
+            return out
+
         if not reported_cc:
-            out["geo_check_status"] = "SKIP"
+            out["geo_check_status"] = "WARN"
             out["geo_check_reason"] = "no_reported_country_code"
             return out
 
-        # reverse geocoder couldn't determine
-        if not reverse_cc:
+        if reverse_cc == "XX":
             out["geo_check_status"] = "WARN"
-            out["geo_check_reason"] = "reverse_geocoder_no_result"
-            return out
-
-        # reverse geocoder is missing some ISO codes
-        if reported_cc in REVERSE_GEOCODER_MISSING_CC:
-            out["geo_check_status"] = "WARN"
-            out["geo_check_reason"] = "reported_cc_not_supported_by_reverse_geocoder"
+            out["geo_check_reason"] = "disputed_or_unrecognised_territory"
             return out
 
         if reverse_cc == reported_cc:
             out["geo_check_status"] = "PASS"
             out["geo_check_reason"] = "match"
+        elif TERRITORY_TO_PARENT_CC.get(reverse_cc) == reported_cc:
+            # reverse is a territory of the reported parent e.g. reverse=HK, reported=CN
+            out["geo_check_status"] = "PASS"
+            out["geo_check_reason"] = "match_territory"
+        elif (
+            reported_cc in TERRITORY_TO_PARENT_CC
+            and TERRITORY_TO_PARENT_CC[reported_cc] == reverse_cc
+            and not self._territory_has_own_polygon(reported_cc)
+        ):
+            # reported is a territory with no own polygon, parent returned instead
+            # e.g. reported=GF, reverse=FR (Natural Earth maps GF as FR)
+            out["geo_check_status"] = "PASS"
+            out["geo_check_reason"] = "match_territory"
+        elif self._is_near_border(latitude, longitude, reported_cc):
+            out["geo_check_status"] = "PASS"
+            out["geo_check_reason"] = "match_near_border"
         else:
             out["geo_check_status"] = "FAIL"
             out["geo_check_reason"] = "country_mismatch"
@@ -491,6 +571,9 @@ class LocationCurator:
             )
 
         result.update(geo)
+
+        if result.get("geo_check_reason") == "implausibly_precise":
+            result["coord_precision_deg"] = max(result["coord_precision_deg"], 0.0001)
 
         if geo.get("geo_check_status") == "FAIL":
             result["region"] = None

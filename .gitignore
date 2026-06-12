@@ -23,3 +23,9 @@ temp/
 # Coverage
 .coverage
 htmlcov/
+
+# Troubleshooting and local scripts
+scratch/
+
+# Large files
+sample_metadata_curation/resources/ne_countries.zip

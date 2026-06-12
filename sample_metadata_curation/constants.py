@@ -117,9 +117,114 @@ NON_COUNTRIES = {
     "Spratly Islands",
 }
 
-# Places that are "countries" in INSDC but not reverse_geocoder
-REVERSE_GEOCODER_MISSING_CC = {
-    "UM",  # United States Minor Outlying Islands
+SMALL_ISLAND_CC = {
     "BV",  # Bouvet Island
+    "KY",  # Cayman Islands
+    "CK",  # Cook Islands
+    "CX",  # Christmas Island
+    "CC",  # Cocos (Keeling) Islands
+    "FK",  # Falkland Islands
+    "FO",  # Faroe Islands
+    "GI",  # Gibraltar
+    "GG",  # Guernsey
     "HM",  # Heard Island and McDonald Islands
+    "IM",  # Isle of Man
+    "JE",  # Jersey
+    "MO",  # Macao
+    "MV",  # Maldives
+    "MH",  # Marshall Islands
+    "NR",  # Nauru
+    "NU",  # Niue
+    "NF",  # Norfolk Island
+    "MP",  # Northern Mariana Islands
+    "PW",  # Palau
+    "PN",  # Pitcairn
+    "SH",  # Saint Helena
+    "PM",  # Saint Pierre and Miquelon
+    "SM",  # San Marino
+    "ST",  # Sao Tome and Principe
+    "SC",  # Seychelles
+    "SG",  # Singapore
+    "TK",  # Tokelau
+    "TO",  # Tonga
+    "TC",  # Turks and Caicos Islands
+    "TV",  # Tuvalu
+    "UM",  # US Minor Outlying Islands
+    "VU",  # Vanuatu
+    "WF",  # Wallis and Futuna
+}
+
+# Territories that Natural Earth maps to their parent country's ISO code
+TERRITORY_TO_PARENT_CC = {
+    # France
+    "GF": "FR",  # French Guiana
+    "GP": "FR",  # Guadeloupe
+    "MQ": "FR",  # Martinique
+    "RE": "FR",  # Reunion
+    "YT": "FR",  # Mayotte
+    "PM": "FR",  # Saint Pierre and Miquelon
+    "BL": "FR",  # Saint Barthelemy
+    "MF": "FR",  # Saint Martin (French part)
+    "NC": "FR",  # New Caledonia
+    "PF": "FR",  # French Polynesia
+    "TF": "FR",  # French Southern and Antarctic Lands
+    "WF": "FR",  # Wallis and Futuna
+    # United Kingdom
+    "AI": "GB",  # Anguilla
+    "BM": "GB",  # Bermuda
+    "IO": "GB",  # British Indian Ocean Territory
+    "VG": "GB",  # British Virgin Islands
+    "KY": "GB",  # Cayman Islands
+    "FK": "GB",  # Falkland Islands
+    "GI": "GB",  # Gibraltar
+    "GG": "GB",  # Guernsey
+    "IM": "GB",  # Isle of Man
+    "JE": "GB",  # Jersey
+    "MS": "GB",  # Montserrat
+    "PN": "GB",  # Pitcairn Islands
+    "SH": "GB",  # Saint Helena, Ascension and Tristan da Cunha
+    "GS": "GB",  # South Georgia and South Sandwich Islands
+    "TC": "GB",  # Turks and Caicos Islands
+    # United States
+    "AS": "US",  # American Samoa
+    "GU": "US",  # Guam
+    "MH": "US",  # Marshall Islands (Compact of Free Association)
+    "FM": "US",  # Micronesia (Compact of Free Association)
+    "MP": "US",  # Northern Mariana Islands
+    "PW": "US",  # Palau (Compact of Free Association)
+    "PR": "US",  # Puerto Rico
+    "UM": "US",  # United States Minor Outlying Islands
+    "VI": "US",  # United States Virgin Islands
+    # Netherlands
+    "AW": "NL",  # Aruba
+    "BQ": "NL",  # Bonaire, Sint Eustatius and Saba
+    "CW": "NL",  # Curacao
+    "SX": "NL",  # Sint Maarten (Dutch part)
+    # Denmark
+    "FO": "DK",  # Faroe Islands
+    "GL": "DK",  # Greenland
+    # Norway
+    "BV": "NO",  # Bouvet Island
+    "SJ": "NO",  # Svalbard and Jan Mayen
+    # Australia
+    "CC": "AU",  # Cocos (Keeling) Islands
+    "CX": "AU",  # Christmas Island
+    "HM": "AU",  # Heard Island and McDonald Islands
+    "NF": "AU",  # Norfolk Island
+    # New Zealand
+    "CK": "NZ",  # Cook Islands
+    "NU": "NZ",  # Niue
+    "TK": "NZ",  # Tokelau
+    # Finland
+    "AX": "FI",  # Aaland Islands
+    # China
+    "HK": "CN",  # Hong Kong
+    "MO": "CN",  # Macao
+    # Spain
+    "EA": "ES",  # Ceuta and Melilla
+    "IC": "ES",  # Canary Islands
+    # Portugal
+    "AC": "PT",  # Ascension Island (note: also SH/GB)
+    # Morocco (disputed)
+    "EH": "MA",  # Western Sahara
 }
