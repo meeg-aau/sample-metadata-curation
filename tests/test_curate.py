@@ -253,6 +253,7 @@ def test_centroid_or_capital():
     assert result["geo_check_status"] == "WARN"
     assert result["geo_check_reason"] == "centroid_or_capital"
 
+
 def test_valid_coordinates_pass():
     # Normal Danish coordinates should pass through all checks
     result = curate_biosample(make_sample(55.62115, 8.2849, "Denmark"))
