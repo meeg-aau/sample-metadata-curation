@@ -72,6 +72,24 @@ class LocationCurator:
             resources_dir / "country_centroids_and_capitals.csv"
         )
         self.natural_earth_zip = resources_dir / "ne_countries.zip"
+
+        missing = [
+            p
+            for p in [
+                self.mapping_csv,
+                self.oceans_txt,
+                self.centroids_and_capitals_csv,
+                self.natural_earth_zip,
+            ]
+            if not p.exists()
+        ]
+        if missing:
+            missing_names = ", ".join(p.name for p in missing)
+            raise FileNotFoundError(
+                f"Missing required resource files: {missing_names}. "
+                "Please run 'setup-sample-resources' to download them."
+            )
+
         self.name_to_cc = self.load_country_mapping()
         self.oceans_and_seas = self.load_oceans_and_seas()
         self.reference_coords = self.load_reference_coords(

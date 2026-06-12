@@ -21,6 +21,7 @@ To install the package in your environment:
 
 ```bash
 pip install .
+setup-sample-resources
 ```
 
 ### For Developers
@@ -29,6 +30,7 @@ To install with development tools (Black, isort, Flake8, pytest):
 
 ```bash
 pip install -e ".[dev]"
+setup-sample-resources
 ```
 
 ## Usage
@@ -42,7 +44,7 @@ The package provides two main command-line tools:
    curate-sample --sample_json path/to/sample.json
    ```
 
-2. **`setup-sample-resources`**: Fetches and prepares external resources (this runs automatically during installation).
+2. **`setup-sample-resources`**: Fetches and prepares external resources required by the package.
    ```bash
    setup-sample-resources
    ```
