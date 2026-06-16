@@ -57,9 +57,15 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-j",
-        "--sample_json",
-        required=True,
+        "--sample-json",
+        required=False,
         help="BioSample API JSON output or path to JSON file",
+    )
+
+    parser.add_argument(
+        "--json-dir",
+        required=False,
+        help="Directory containing raw BioSamples JSON files to curate in batch.",
     )
     parser.add_argument(
         "-cc",
@@ -75,6 +81,40 @@ def parse_arguments():
         required=False,
         help="Comma separated list of keys to extract as biome",
     )
+
+    parser.add_argument(
+        "--output-json",
+        required=False,
+        help="Optional path to save the curated metadata as a JSON file",
+    )
+
+    parser.add_argument(
+        "--output-tsv",
+        required=False,
+        help="Optional path to save the curated metada as a TSV file.",
+    )
+
+    parser.add_argument(
+        "--biosample-list",
+        required=False,
+        help="Text file with one BioSample accession per line to download and curate.",
+    )
+
+    parser.add_argument(
+        "--download-json-outdir",
+        required=False,
+        help=(
+            "Directory where downloaded raw EBI BioSamples JSON files wil be saved."
+            "Required when using --biosample-list"
+        ),
+    ),
+
+    parser.add_argument(
+        "--overwrite-downloads",
+        action="store_true",
+        help="Overwrite existing downloaded raw BioSamples JSON files.",
+    )
+
     return parser.parse_args()
 
 

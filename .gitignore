@@ -29,3 +29,9 @@ scratch/
 
 # Large files
 sample_metadata_curation/resources/ne_countries.zip
+
+# raw json
+tests/raw_json/
+
+# json outputs saved
+tests/outputs/
