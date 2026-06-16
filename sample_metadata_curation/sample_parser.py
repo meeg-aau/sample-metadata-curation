@@ -85,13 +85,13 @@ def parse_arguments():
     parser.add_argument(
         "--output-json",
         required=False,
-        help="Optional path to save the curated metadata as a JSON file"
+        help="Optional path to save the curated metadata as a JSON file",
     )
 
     parser.add_argument(
         "--output-tsv",
         required=False,
-        help="Optional path to save the curated metada as a TSV file."
+        help="Optional path to save the curated metada as a TSV file.",
     )
 
     parser.add_argument(
@@ -106,15 +106,14 @@ def parse_arguments():
         help=(
             "Directory where downloaded raw EBI BioSamples JSON files wil be saved."
             "Required when using --biosample-list"
-        )
+        ),
     ),
 
     parser.add_argument(
         "--overwrite-downloads",
         action="store_true",
-        help="Overwrite existing downloaded raw BioSamples JSON files."
+        help="Overwrite existing downloaded raw BioSamples JSON files.",
     )
-
 
     return parser.parse_args()
 

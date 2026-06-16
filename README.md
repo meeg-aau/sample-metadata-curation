@@ -58,7 +58,7 @@ Or using a JSON string:
 ```bash
 curate-sample --sample_json path/to/sample.json
 ```
-  
+
 2. **`setup-sample-resources`**: Fetches and prepares external resources (this runs automatically during installation).
 
 
@@ -93,17 +93,17 @@ Curated metadata can be saved as either TSV or JSON.
 #### Saving Output as TSV
 
 ```bash
-curate-sample \ 
---sample-json path/to/sample.json \ 
+curate-sample \
+--sample-json path/to/sample.json \
 --output-tsv curated_metadata.tsv
 ```
 
 or a directory of JSON files:
 
 ```bash
-curate-sample \ 
---sample-json path/to/json_directory/ \ 
---output-tsv curated_metadata.tsv 
+curate-sample \
+--sample-json path/to/json_directory/ \
+--output-tsv curated_metadata.tsv
 ```
 
 #### Save Output as JSON
@@ -126,7 +126,7 @@ The TSV output is useful for manual inspection, spreadsheets, and downstream dat
 
 ### Downloading and Curating BioSamples in One Workflow
 
-Biosample JSON records can be downloaded from a list of accessions and curated immediately after download. 
+Biosample JSON records can be downloaded from a list of accessions and curated immediately after download.
 
 The input list should contain one BioSample accession per line:
 
@@ -157,10 +157,10 @@ curate-sample \
 This will create a directory containing the downloaded JSON records:
 
 ```bash
-downloaded_biosample_jsons/ 
-├── SAMN39868869.json 
-├── SAMN39868870.json 
-├── SAMN39868871.json 
+downloaded_biosample_jsons/
+├── SAMN39868869.json
+├── SAMN39868870.json
+├── SAMN39868871.json
 └── ...
 ```
 

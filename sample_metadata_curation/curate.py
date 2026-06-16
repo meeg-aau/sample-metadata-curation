@@ -1,23 +1,22 @@
+import csv
 import json
 import os
 import sys
-import csv
 import urllib.error
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sample_metadata_curation.biome import BiomeCurator
+from sample_metadata_curation.download_ebi_biosamples_json import (
+    download_biosample_json,
+    read_accessions,
+    save_json,
+)
 from sample_metadata_curation.location import LocationCurator
 from sample_metadata_curation.sample_parser import (
     load_json,
     parse_arguments,
     standardise_keys,
-)
-
-from sample_metadata_curation.download_ebi_biosamples_json import(
-    read_accessions,
-    download_biosample_json,
-    save_json
 )
 
 
@@ -95,11 +94,12 @@ def save_curated_json(result, output_path):
     with open(output_path, "w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2, ensure_ascii=False)
 
+
 def save_curated_tsv(result, output_path):
     """
     Save curated metadata as a TSV file.
 
-    If a single sample dictionary os provided, it is converted to a one-row table. 
+    If a single sample dictionary os provided, it is converted to a one-row table.
     If a list of dictionaries is provided, all observed keys are used as columns.
     """
 
@@ -129,9 +129,13 @@ def save_curated_tsv(result, output_path):
         writer.writeheader()
         writer.writerows(rows)
 
-def download_and_curate_biosamples(biosample_list, download_json_outdir, biome_keys=None, overwrite_downloads=False):
+
+def download_and_curate_biosamples(
+    biosample_list, download_json_outdir, biome_keys=None, overwrite_downloads=False
+):
     """
-    Download raw EBI BioSamples JSON records from a list of BioSample accessions and curate each downloaded sample.
+    Download raw EBI BioSamples JSON records from a list of BioSample accessions and
+    curate each downloaded sample.
 
     Returns
     -------
@@ -159,7 +163,7 @@ def download_and_curate_biosamples(biosample_list, download_json_outdir, biome_k
         try:
             if raw_json_path.exists() and not overwrite_downloads:
                 sample_json = load_json(raw_json_path)
-            else: 
+            else:
                 sample_json = download_biosample_json(accession)
                 save_json(sample_json, raw_json_path)
 
@@ -199,14 +203,13 @@ def download_and_curate_biosamples(biosample_list, download_json_outdir, biome_k
                 }
             )
 
-    return results, failures    
-               
+    return results, failures
 
 
 def main():
     args = parse_arguments()
     biome_keys = args.biome.split(",") if args.biome else None
-    
+
     if args.sample_json:
         result = curate_biosample(args.sample_json, biome_keys=biome_keys)
 
@@ -223,8 +226,8 @@ def main():
 
         if not args.output_json and not args.output_tsv:
             print(json.dumps(result, indent=2, ensure_ascii=False))
-       
-        return 
+
+        return
 
     if args.json_dir:
         json_dir = Path(args.json_dir)
@@ -296,8 +299,7 @@ def main():
         "ERROR: provide one of --sample-json, --json-dir, or --biosample-list",
         file=sys.stderr,
     )
-    sys.exit(1)   
-  
+    sys.exit(1)
 
 
 if __name__ == "__main__":
