@@ -22,28 +22,37 @@ logging = logging.getLogger()
 
 ENA_URL = "https://www.ebi.ac.uk/ena/browser/api/xml/ERC000011?download=true"
 COORDINATE_CLEANER_URL = (
-    "https://github.com/ropensci/CoordinateCleaner/raw/"
-    "9195fb64154dd20a921a412b5e4d24cc18d3803c/data/countryref.rda"
+    "https://raw.githubusercontent.com/ropensci/CoordinateCleaner/"
+    "master/data/countryref.rda"
 )
-ROR_URL = (
-    "https://zenodo.org/records/19576723/files/v2.6-2026-04-14-ror-data.zip?download=1"
-)
+ROR_ZENODO_CONCEPT_ID = "6347574"
+
+
+def get_ror_download_url() -> str:
+    r = requests.get(
+        f"https://zenodo.org/api/records?q=conceptrecid:"
+        f"{ROR_ZENODO_CONCEPT_ID}&sort=mostrecent&size=1"
+    )
+    r.raise_for_status()
+    files = r.json()["hits"]["hits"][0]["files"]
+    return next(f["links"]["self"] for f in files if f["key"].endswith(".zip"))
+
+
 NATURAL_EARTH_URL = (
     "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
 )
 
 
 def get_checklist_countries():
-    """
-    INSDC list of accepted names
-    """
     try:
         logging.info("Downloading ENA country list...")
         response_ena = requests.get(ENA_URL)
         logging.info("Downloading CoordinateCleaner country reference...")
         response_cc = requests.get(COORDINATE_CLEANER_URL)
-        logging.info("Downloading ROR institution data...")
-        response_ror = requests.get(ROR_URL)
+        logging.info("Fetching latest ROR download URL...")
+        ror_url = get_ror_download_url()
+        logging.info(f"Downloading ROR institution data from {ror_url}...")
+        response_ror = requests.get(ror_url)
         logging.info("Downloading Natural Earth country boundaries...")
         response_ne = requests.get(NATURAL_EARTH_URL)
         return (
@@ -54,6 +63,7 @@ def get_checklist_countries():
         )
     except Exception as e:
         logging.error(f"Error downloading country lists: {e}")
+        raise
 
 
 def parse_ena_xml(ena_xml: str) -> List[str]:
@@ -107,7 +117,7 @@ def parse_coordinate_cleaner_ref(rda_bytes: bytes) -> pd.DataFrame:
     with centroid and capital coordinates per country.
     """
     result = pyreadr.read_r(io.BytesIO(rda_bytes))
-    df = result[list(result.keys())[0]]
+    df = result["countryref"]
 
     df = df[["iso2", "centroid.lon", "centroid.lat", "capital.lon", "capital.lat"]]
 
@@ -123,6 +133,12 @@ def parse_ror_institutions(ror_bytes: bytes) -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(ror_bytes)) as z:
         # Find the CSV file inside the zip
         csv_files = [f for f in z.namelist() if f.endswith(".csv")]
+        if not csv_files:
+            raise ValueError(
+                f"No CSV file found in ROR zip. Files present: {z.namelist()}"
+            )
+        if len(csv_files) > 1:
+            raise ValueError(f"Multiple CSV files found in ROR zip: {csv_files}")
         logging.info(f"Files in ROR zip: {z.namelist()}")
         with z.open(csv_files[0]) as f:
             df = pd.read_csv(f)
@@ -235,8 +251,6 @@ def create_final_cc_mapping(
                 f"has no usable ISO code (from {country})"
             )
             continue
-
-        cc = ref_iso_code.split("|")[0].strip()
 
     return final_mapping, oceans_and_seas
 

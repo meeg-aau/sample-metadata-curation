@@ -72,6 +72,8 @@ class LocationCurator:
             resources_dir / "country_centroids_and_capitals.csv"
         )
         self.natural_earth_zip = resources_dir / "ne_countries.zip"
+        self.institutions_csv = resources_dir / "research_institutions.csv"
+        self.institution_coords = self.load_institution_coords(self.institutions_csv)
 
         missing = [
             p
@@ -138,6 +140,20 @@ class LocationCurator:
                         coords.append((float(row[lat_col]), float(row[lon_col]), iso2))
                     except (ValueError, TypeError):
                         pass
+        return coords
+
+    @staticmethod
+    def load_institution_coords(csv_path: Path) -> List[Tuple[float, float]]:
+        coords = []
+        if not csv_path.exists():
+            return coords
+        with csv_path.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    coords.append((float(row["latitude"]), float(row["longitude"])))
+                except (ValueError, TypeError):
+                    pass
         return coords
 
     @staticmethod
@@ -208,6 +224,15 @@ class LocationCurator:
             and abs(longitude - lon) <= threshold_deg
             and (iso2 is None or reported_cc is None or iso2 == reported_cc)
             for lat, lon, iso2 in self.reference_coords
+        )
+
+    def _is_known_institution(
+        self, latitude: float, longitude: float, threshold_deg: float = 0.001
+    ) -> bool:
+        return any(
+            abs(latitude - lat) <= threshold_deg
+            and abs(longitude - lon) <= threshold_deg
+            for lat, lon in self.institution_coords
         )
 
     def _is_near_border(self, latitude, longitude, reported_cc, threshold_m=10000):
@@ -300,10 +325,6 @@ class LocationCurator:
                 if canonical_name not in name_to_cc:
                     name_to_cc[canonical_name] = cc
         return name_to_cc
-
-    def _territory_has_own_polygon(self, cc: str) -> bool:
-        """Check if a territory has its own polygon in the Natural Earth dataset."""
-        return not self.countries_gdf[self.countries_gdf["ISO_A2"] == cc].empty
 
     def infer_reported_country_code(
         self,
@@ -418,21 +439,23 @@ class LocationCurator:
             out["geo_check_reason"] = "centroid_or_capital"
             return out
 
+        if self._is_known_institution(latitude, longitude):
+            out["geo_check_status"] = "WARN"
+            out["geo_check_reason"] = "known_institution"
+            return out
+
         # Ocean: polygon lookup returns None for points in the sea
         # unless the reported_cc is a small island or a territory
         if reverse_cc is None:
-            if reported_cc in SMALL_ISLAND_CC:
-                out["geo_check_status"] = "WARN"
-                out["geo_check_reason"] = "small_island_not_in_reference"
-            elif (
-                reported_cc in TERRITORY_TO_PARENT_CC
-                and not self._territory_has_own_polygon(reported_cc)
-            ):
+            if reported_cc and reported_cc in TERRITORY_TO_PARENT_CC:
                 out["geo_check_status"] = "PASS"
                 out["geo_check_reason"] = "match_territory"
+            elif reported_cc in SMALL_ISLAND_CC:
+                out["geo_check_status"] = "WARN"
+                out["geo_check_reason"] = "small_island_not_in_reference"
             else:
-                out["geo_check_status"] = "PASS"
-                out["geo_check_reason"] = "ocean_or_sea"
+                out["geo_check_status"] = "WARN"
+                out["geo_check_reason"] = "no_land_polygon_match"
             return out
 
         if not reported_cc:
@@ -455,10 +478,7 @@ class LocationCurator:
         elif (
             reported_cc in TERRITORY_TO_PARENT_CC
             and TERRITORY_TO_PARENT_CC[reported_cc] == reverse_cc
-            and not self._territory_has_own_polygon(reported_cc)
         ):
-            # reported is a territory with no own polygon, parent returned instead
-            # e.g. reported=GF, reverse=FR (Natural Earth maps GF as FR)
             out["geo_check_status"] = "PASS"
             out["geo_check_reason"] = "match_territory"
         elif self._is_near_border(latitude, longitude, reported_cc):

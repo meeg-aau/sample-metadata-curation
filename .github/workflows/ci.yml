@@ -25,6 +25,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install .[dev]
 
+    - name: Install resources
+      run: |
+        setup-sample-resources
+
     - name: Run linting
       run: |
         black --check .

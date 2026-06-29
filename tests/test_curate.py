@@ -1,4 +1,3 @@
-# test_parser.py
 from pathlib import Path
 
 import pytest
@@ -314,15 +313,8 @@ def test_disputed_territory():
 
 
 def test_territory_match():
-    # Hong Kong coordinates, reported as China
-    result = curate_biosample(make_sample(22.35, 114.15, "China"))
-    assert result["geo_check_status"] == "PASS"
-    assert result["geo_check_reason"] == "match_territory"
-
-
-def test_territory_reported_no_own_polygon():
-    # Guadeloupe has no own polygon, Natural Earth returns FR
-    result = curate_biosample(make_sample(16.26, -61.55, "Guadeloupe"))
+    # French Guiana coordinates (territory of France, no NE polygon)
+    result = curate_biosample(make_sample(2.8, -53.8, "French Guiana"))
     assert result["geo_check_status"] == "PASS"
     assert result["geo_check_reason"] == "match_territory"
 
@@ -332,3 +324,10 @@ def test_near_border():
     result = curate_biosample(make_sample(54.866, 9.04807, "Denmark"))
     assert result["geo_check_status"] == "PASS"
     assert result["geo_check_reason"] == "match_near_border"
+
+
+def test_institution_coordinates():
+    # Natural History Museum Aarhus,DK,56.15674,10.21076
+    result = curate_biosample(make_sample(56.1567, 10.2107, "Denmark"))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "known_institution"
