@@ -28,6 +28,7 @@ jobs:
     - name: Install resources
       run: |
         setup-sample-resources
+        ls sample_metadata_curation/resources/
 
     - name: Run linting
       run: |
