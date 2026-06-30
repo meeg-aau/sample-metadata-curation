@@ -454,8 +454,8 @@ class LocationCurator:
                 out["geo_check_status"] = "WARN"
                 out["geo_check_reason"] = "small_island_not_in_reference"
             else:
-                out["geo_check_status"] = "WARN"
-                out["geo_check_reason"] = "no_land_polygon_match"
+                out["geo_check_status"] = "PASS"
+                out["geo_check_reason"] = "ocean_or_sea"
             return out
 
         if not reported_cc:
