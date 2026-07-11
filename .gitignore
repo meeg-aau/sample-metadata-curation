@@ -23,3 +23,13 @@ temp/
 # Coverage
 .coverage
 htmlcov/
+
+# Troubleshooting and local scripts
+scratch/
+
+# Resource files
+sample_metadata_curation/resources/country_to_cc_mapping.csv
+sample_metadata_curation/resources/oceans_and_seas.txt
+sample_metadata_curation/resources/country_centroids_and_capitals.csv
+sample_metadata_curation/resources/ne_countries.zip
+sample_metadata_curation/resources/research_institutions.csv

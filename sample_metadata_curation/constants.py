@@ -117,9 +117,67 @@ NON_COUNTRIES = {
     "Spratly Islands",
 }
 
-# Places that are "countries" in INSDC but not reverse_geocoder
-REVERSE_GEOCODER_MISSING_CC = {
-    "UM",  # United States Minor Outlying Islands
+# Islands too small to have their own Natural Earth polygon
+# polygon lookup returns None for coordinates in these territories
+SMALL_ISLAND_CC = {
     "BV",  # Bouvet Island
+    "KY",  # Cayman Islands
+    "CK",  # Cook Islands
+    "CX",  # Christmas Island
+    "CC",  # Cocos (Keeling) Islands
+    "FK",  # Falkland Islands
+    "FO",  # Faroe Islands
+    "GI",  # Gibraltar
+    "GG",  # Guernsey
     "HM",  # Heard Island and McDonald Islands
+    "IM",  # Isle of Man
+    "JE",  # Jersey
+    "MO",  # Macao
+    "MV",  # Maldives
+    "MH",  # Marshall Islands
+    "NR",  # Nauru
+    "NU",  # Niue
+    "NF",  # Norfolk Island
+    "MP",  # Northern Mariana Islands
+    "PW",  # Palau
+    "PN",  # Pitcairn
+    "SH",  # Saint Helena
+    "PM",  # Saint Pierre and Miquelon
+    "SM",  # San Marino
+    "ST",  # Sao Tome and Principe
+    "SC",  # Seychelles
+    "SG",  # Singapore
+    "TK",  # Tokelau
+    "TO",  # Tonga
+    "TC",  # Turks and Caicos Islands
+    "TV",  # Tuvalu
+    "UM",  # US Minor Outlying Islands
+    "VU",  # Vanuatu
+    "WF",  # Wallis and Futuna
+}
+
+# Territories whose polygons are mapped to the parent country in Natural Earth
+# e.g. coordinates in French Guiana return "FR" not "GF"
+TERRITORY_TO_PARENT_CC = {
+    # France
+    "GF": "FR",  # French Guiana
+    "GP": "FR",  # Guadeloupe
+    "MQ": "FR",  # Martinique
+    "RE": "FR",  # Reunion
+    "YT": "FR",  # Mayotte
+    # Netherlands
+    "BQ": "NL",  # Bonaire, Sint Eustatius and Saba
+    # Norway
+    "BV": "NO",  # Bouvet Island
+    "SJ": "NO",  # Svalbard and Jan Mayen
+    # Australia
+    "CC": "AU",  # Cocos (Keeling) Islands
+    "CX": "AU",  # Christmas Island
+    # New Zealand
+    "TK": "NZ",  # Tokelau
+    # Spain
+    "EA": "ES",  # Ceuta and Melilla
+    "IC": "ES",  # Canary Islands
+    # Portugal
+    "AC": "PT",  # Ascension Island
 }

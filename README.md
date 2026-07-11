@@ -21,6 +21,7 @@ To install the package in your environment:
 
 ```bash
 pip install .
+setup-sample-resources
 ```
 
 ### For Developers
@@ -29,6 +30,7 @@ To install with development tools (Black, isort, Flake8, pytest):
 
 ```bash
 pip install -e ".[dev]"
+setup-sample-resources
 ```
 
 ## Usage
@@ -42,7 +44,7 @@ The package provides two main command-line tools:
    curate-sample --sample_json path/to/sample.json
    ```
 
-2. **`setup-sample-resources`**: Fetches and prepares external resources (this runs automatically during installation).
+2. **`setup-sample-resources`**: Fetches and prepares external resources required by the package.
    ```bash
    setup-sample-resources
    ```
@@ -78,8 +80,10 @@ result = curate_biosample(json_string)
 result = curate_biosample("path/to/sample.json")
 
 print(result)
-# Output: {'accession': 'SAMN39868869', 'location': 'Denmark', 'latitude': 55.62115, 'longitude': 8.2849}
+# Output: {'accession': 'SAMN39868869', 'location': 'Denmark', 'latitude': 55.62115, 'longitude': 8.2849, 'coord_precision_deg': 0.0001}
 ```
+
+coord_precision_deg is an estimate of the coordinate precision in degrees, where approximately: 1.0 ≈ 111km, 0.1 ≈ 11km, 0.01 ≈ 1km, 0.001 ≈ 111m, 0.0001 ≈ 11m.
 
 ## Development
 

@@ -1,9 +1,17 @@
-# test_parser.py
+from pathlib import Path
+
 import pytest
 
 from sample_metadata_curation.curate import curate_biosample
 
-FIXTURE_PATH = "tests/fixtures/test.json"
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "test.json"
+
+
+def make_sample(lat, lon, location=None):
+    chars = {"lat_lon": [{"text": f"{lat} {lon}"}]}
+    if location:
+        chars["geo_loc_name"] = [{"text": location}]
+    return {"accession": "TEST001", "characteristics": chars}
 
 
 def test_curate_biosample_full():
@@ -144,14 +152,6 @@ def test_invalid_region_returns_none(region_str):
             "match",
         ),  # Matching with locality
         (
-            "United States Minor Outlying Islands:Baker Island",
-            "0.1947, -176.4794",
-            "United States Minor Outlying Islands",
-            "Baker Island",
-            "WARN",
-            "reported_cc_not_supported_by_reverse_geocoder",
-        ),
-        (
             "Atlantic Ocean:Charlie Gibbs Fracture Zone",
             "52.45, -35.08",
             "Atlantic Ocean",
@@ -217,3 +217,117 @@ def test_ocean_swapping_skipped():
     assert result["geo_check_status"] == "PASS"
     assert result["geo_check_reason"] == "ocean_or_sea"
     assert result["coordinates_reversed"] is False
+
+
+# ── Coordinate quality checks ──────────────────────────────────────────────
+
+
+def test_null_island():
+    result = curate_biosample(make_sample(0.0, 0.0))
+    assert result["geo_check_status"] == "FAIL"
+    assert result["geo_check_reason"] == "null_island"
+
+
+def test_identical_lat_long():
+    result = curate_biosample(make_sample(45.0, 45.0))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "identical_lat_long"
+
+
+def test_coordinates_suspiciously_round():
+    result = curate_biosample(make_sample(55.0, 8.0))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "coordinates_suspiciously_round"
+
+
+def test_implausibly_precise():
+    result = curate_biosample(make_sample(55.1234567, 8.1234567))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "implausibly_precise"
+
+
+def test_centroid_or_capital():
+    # Kabul, Afghanistan capital from reference file
+    result = curate_biosample(make_sample(34.52, 69.18))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "centroid_or_capital"
+
+
+def test_valid_coordinates_pass():
+    # Normal Danish coordinates should pass through all checks
+    result = curate_biosample(make_sample(55.62115, 8.2849, "Denmark"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match"
+
+
+# ── Coordinate precision ───────────────────────────────────────────────────
+
+
+def test_coord_precision_deg():
+    # lat has 5 dp, lon has 4 dp — worst is 4
+    result = curate_biosample(make_sample(55.62115, 8.2849))
+    assert result["coord_precision_deg"] == 0.0001
+
+
+def test_coord_precision_none_when_no_coords():
+    sample = {"characteristics": {"lat_lon": [{"text": "NA"}]}}
+    result = curate_biosample(sample)
+    assert result["coord_precision_deg"] is None
+
+
+# ── DMS parsing ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "lat_lon_str, expected_lat, expected_lon, expected_precision",
+    [
+        (
+            "55° 37' 17.94\" N 8° 17' 5.64\" E",
+            55.62165,
+            8.28490,
+            pytest.approx(1 / 3600, rel=1e-3),
+        ),
+        (
+            "55 37 17.94 N 8 17 5.64 E",
+            55.62165,
+            8.28490,
+            pytest.approx(1 / 3600, rel=1e-3),
+        ),
+        ("55° 37' N 8° 17' E", 55.61667, 8.28333, pytest.approx(1 / 60, rel=1e-3)),
+        ("55° N 8° E", 55.0, 8.0, 1.0),
+    ],
+)
+def test_parse_dms(lat_lon_str, expected_lat, expected_lon, expected_precision):
+    sample = {"characteristics": {"lat_lon": [{"text": lat_lon_str}]}}
+    result = curate_biosample(sample)
+    assert result["latitude"] == pytest.approx(expected_lat, abs=1e-4)
+    assert result["longitude"] == pytest.approx(expected_lon, abs=1e-4)
+    assert result["coord_precision_deg"] == expected_precision
+
+
+def test_disputed_territory():
+    # Somaliland - Natural Earth assigns -99
+    result = curate_biosample(make_sample(9.5, 45.0, "Somalia"))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "disputed_or_unrecognised_territory"
+
+
+def test_territory_match():
+    # French Guiana coordinates (territory of France, no NE polygon)
+    result = curate_biosample(make_sample(2.8, -53.8, "French Guiana"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match_territory"
+
+
+def test_near_border():
+    # Point just inside Germany near Danish border, reported as Denmark
+    result = curate_biosample(make_sample(54.866, 9.04807, "Denmark"))
+    assert result["geo_check_status"] == "PASS"
+    assert result["geo_check_reason"] == "match_near_border"
+
+
+def test_institution_coordinates():
+    # Natural History Museum Aarhus,DK,56.15674,10.21076
+    result = curate_biosample(make_sample(56.1567, 10.2107, "Denmark"))
+    assert result["geo_check_status"] == "WARN"
+    assert result["geo_check_reason"] == "known_institution"
