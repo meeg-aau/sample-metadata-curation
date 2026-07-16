@@ -1,11 +1,13 @@
 import csv
 import io
 import logging
+import tempfile
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional
 from xml.etree import ElementTree
 
+import geopandas as gpd
 import pandas as pd
 import pyreadr
 import requests
@@ -25,22 +27,31 @@ COORDINATE_CLEANER_URL = (
     "https://raw.githubusercontent.com/ropensci/CoordinateCleaner/"
     "master/data/countryref.rda"
 )
-ROR_ZENODO_CONCEPT_ID = "6347574"
-
-
-def get_ror_download_url() -> str:
-    r = requests.get(
-        f"https://zenodo.org/api/records?q=conceptrecid:"
-        f"{ROR_ZENODO_CONCEPT_ID}&sort=mostrecent&size=1"
-    )
-    r.raise_for_status()
-    files = r.json()["hits"]["hits"][0]["files"]
-    return next(f["links"]["self"] for f in files if f["key"].endswith(".zip"))
-
-
+ROR_ZENODO_ID = "6347574"
+ROR_URL = f"https://zenodo.org/api/records?q=conceptrecid:{ROR_ZENODO_ID}&sort=mostrecent&size=1"
 NATURAL_EARTH_URL = (
     "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
 )
+
+#   NAME_CIAWF comes from the CIA World Factbook which has been discontinued. Note for future NE releases
+NATURAL_EARTH_NAME_COLUMNS = [
+    "NAME_CIAWF",
+    "NAME",
+    "NAME_LONG",
+    "ADMIN",
+    "FORMAL_EN",
+    "BRK_NAME",
+]
+
+def get_ror_download_url() -> str:
+    try:
+        r = requests.get(ROR_URL)
+        r.raise_for_status()
+        files = r.json()["hits"]["hits"][0]["files"]
+    except Exception as e:
+        logging.error(f"Error fetching ROR download URL: {e}")
+        raise
+    return next(f["links"]["self"] for f in files if f["key"].endswith(".zip"))
 
 
 def get_checklist_countries():
@@ -62,13 +73,13 @@ def get_checklist_countries():
             response_ne.content,
         )
     except Exception as e:
-        logging.error(f"Error downloading country lists: {e}")
+        logging.error(f"Error downloading country data: {e}")
         raise
 
 
 def parse_ena_xml(ena_xml: str) -> List[str]:
     """
-    Parse the ENA checklist XML to extract countries and seas.
+    Parse the ENA checklist XML to extract INSDC accepted countries and seas.
     """
     try:
         root = ElementTree.fromstring(ena_xml)
@@ -81,7 +92,7 @@ def parse_ena_xml(ena_xml: str) -> List[str]:
                 name_elem is not None
                 and name_elem.text == "geographic_location_country_andor_sea"
             ):
-                # Extract all VALUE tags from TEXT_CHOICE_FIELD
+                # Extract all VALUE tags
                 for value_elem in field.findall(".//TEXT_VALUE/VALUE"):
                     if value_elem.text:
                         val = value_elem.text.strip()
@@ -94,19 +105,25 @@ def parse_ena_xml(ena_xml: str) -> List[str]:
         logging.error(f"Error parsing ENA XML: {e}")
         return []
 
-
-def parse_iso_country_codes(iso_cc: Path) -> Dict[str, Tuple[str, str]]:
+def parse_natural_earth_country_codes(ne_bytes: bytes) -> Dict[str, str]:
     """
-    Parse ISO countries and 2 letter codes
+    Build a country name -> ISO 3166-1 alpha-2-two-letter country code
     """
-    df = pd.read_csv(iso_cc)
-    df.columns = [c.strip() for c in df.columns]
+    with tempfile.NamedTemporaryFile(suffix=".zip") as tmp:
+        tmp.write(ne_bytes)
+        tmp.flush()
+        gdf = gpd.read_file(tmp.name)
 
-    subset = df[["Name", "ISO 3166", "Comment"]]
-
-    mapping = {
-        row["Name"]: (row["ISO 3166"], row["Comment"]) for _, row in subset.iterrows()
-    }
+    mapping: Dict[str, str] = {}
+    for _, row in gdf.iterrows():
+        iso = row.get("ISO_A2_EH")
+        if not isinstance(iso, str) or not iso.strip() or iso == "-99":
+            continue
+        iso = iso.strip()
+        for col in NATURAL_EARTH_NAME_COLUMNS:
+            name = row.get(col)
+            if isinstance(name, str) and name.strip():
+                mapping.setdefault(name.strip(), iso)
 
     return mapping
 
@@ -173,7 +190,7 @@ def save_natural_earth(ne_bytes: bytes, output_path: Path) -> None:
 
 def create_final_cc_mapping(
     ena_countries: List[str],
-    iso_cc: Dict[str, Tuple[str, str]],
+    iso_cc: Dict[str, str],
 ) -> tuple[Dict[str, list], List[str]]:
 
     final_mapping = {}
@@ -197,84 +214,33 @@ def create_final_cc_mapping(
                 country = iso_country
             else:
                 logging.warning(
-                    f"Warning: country {country} not found in ISO country codes mapping"
+                    f"Warning: country {country} not found in "
+                    "Natural Earth name crosswalk"
                 )
                 continue
 
-        iso_code, comment = iso_cc[country]
-
-        # Normal case: ISO code exists
-        if iso_code != "-" and isinstance(iso_code, str) and iso_code.strip():
-            cc = iso_code.split("|")[0].strip()
-            final_mapping[original_country] = [country, cc]
-            continue
-
-        # Sometimes mapped to another country code with string:
-        # "ISO includes with ...{country}"
-        reference_country_string = comment
-
-        # Skip cases with no comment NaN
-        if (
-            not isinstance(reference_country_string, str)
-            or not reference_country_string.strip()
-        ):
-            logging.warning(
-                f"Warning: no reference comment for country {country} "
-                "(ISO code is '-')"
-            )
-            continue
-
-        reference_country = (
-            reference_country_string.replace("ISO includes with ", "")
-            .replace("the ", "")
-            .strip()
-        )
-
-        if reference_country not in iso_cc:
-            try:
-                reference_country = MISSING_COUNTRY_MAPPING[reference_country]
-            except KeyError:
-                logging.warning(
-                    f"Warning: reference country {reference_country} "
-                    f"not found in ISO mapping (from {country})"
-                )
-                continue
-
-        ref_iso_code, _ref_comment = iso_cc[reference_country]
-        if (
-            not isinstance(ref_iso_code, str)
-            or not ref_iso_code.strip()
-            or ref_iso_code == "-"
-        ):
-            logging.warning(
-                f"Warning: reference country {reference_country} "
-                f"has no usable ISO code (from {country})"
-            )
-            continue
+        final_mapping[original_country] = [country, iso_cc[country]]
 
     return final_mapping, oceans_and_seas
 
 
-def main():
+def main(resource_dir: Optional[Path] = None):
 
     logging.info("Running geographical mapping setup...")
 
-    resource_dir = Path(__file__).parent / "resources"
+    if resource_dir is None:
+        resource_dir = Path(__file__).parent / "resources"
 
     if not resource_dir.exists():
         logging.error(f"Resource directory {resource_dir} does not exist. Exiting...")
-        return
-
-    country_codes = resource_dir / "country-codes.csv"
-    if not country_codes.exists():
-        logging.error(f"country-codes.csv not found in {resource_dir}. Exiting...")
         return
 
     ena_xml, cc_rda, ror_bytes, ne_bytes = get_checklist_countries()
 
     ena_countries = parse_ena_xml(ena_xml)
     logging.info(f"{len(ena_countries)} countries found in ENA checklist")
-    iso_cc = parse_iso_country_codes(country_codes)
+    iso_cc = parse_natural_earth_country_codes(ne_bytes)
+    logging.info(f"{len(iso_cc)} country name variants found in Natural Earth")
 
     final_mapping_path = resource_dir / "country_to_cc_mapping.csv"
     oceans_and_seas_path = resource_dir / "oceans_and_seas.txt"
