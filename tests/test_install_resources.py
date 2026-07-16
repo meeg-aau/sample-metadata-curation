@@ -104,6 +104,12 @@ def test_create_final_cc_mapping_skips_unresolvable_country():
     assert "Nonexistentland" not in final
 
 
+def test_create_final_cc_mapping_skips_when_fallback_target_also_missing():
+    # regression test: fallback target not present in iso_cc must not raise
+    final, _oceans = create_final_cc_mapping(["Cocos Islands"], {})
+    assert "Cocos Islands" not in final
+
+
 # ── parse_ena_xml ─────────────────────────────────────────────────────────
 
 

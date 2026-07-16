@@ -28,12 +28,16 @@ COORDINATE_CLEANER_URL = (
     "master/data/countryref.rda"
 )
 ROR_ZENODO_ID = "6347574"
-ROR_URL = f"https://zenodo.org/api/records?q=conceptrecid:{ROR_ZENODO_ID}&sort=mostrecent&size=1"
+ROR_URL = (
+    f"https://zenodo.org/api/records?q=conceptrecid:{ROR_ZENODO_ID}"
+    "&sort=mostrecent&size=1"
+)
 NATURAL_EARTH_URL = (
     "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip"
 )
 
-#   NAME_CIAWF comes from the CIA World Factbook which has been discontinued. Note for future NE releases
+#   NAME_CIAWF comes from the CIA World Factbook which has been
+#   discontinued. Note for future NE releases
 NATURAL_EARTH_NAME_COLUMNS = [
     "NAME_CIAWF",
     "NAME",
@@ -42,6 +46,7 @@ NATURAL_EARTH_NAME_COLUMNS = [
     "FORMAL_EN",
     "BRK_NAME",
 ]
+
 
 def get_ror_download_url() -> str:
     try:
@@ -104,6 +109,7 @@ def parse_ena_xml(ena_xml: str) -> List[str]:
     except Exception as e:
         logging.error(f"Error parsing ENA XML: {e}")
         return []
+
 
 def parse_natural_earth_country_codes(ne_bytes: bytes) -> Dict[str, str]:
     """
@@ -210,7 +216,8 @@ def create_final_cc_mapping(
         original_country = country
         if country not in iso_cc:
             iso_country = MISSING_COUNTRY_MAPPING.get(country, None)
-            if iso_country:
+            # target may not exist in the Natural Earth crosswalk either
+            if iso_country and iso_country in iso_cc:
                 country = iso_country
             else:
                 logging.warning(
