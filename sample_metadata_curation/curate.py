@@ -1,10 +1,10 @@
 import json
 import os
 import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sample_metadata_curation.biome import BiomeCurator
+from sample_metadata_curation.date import DateCurator
 from sample_metadata_curation.location import LocationCurator
 from sample_metadata_curation.sample_parser import (
     load_json,
@@ -16,14 +16,16 @@ from sample_metadata_curation.sample_parser import (
 class SampleCurator:
     def __init__(
         self,
-        resources_dir: Optional[Path] = None,
-        biome_keys: Optional[List[str]] = None,
+        resources_dir=None,
+        biome_keys=None,
+        curate_dates: bool = False,
+        min_date_resolution: Optional[str] = None,
     ):
-        if resources_dir is None:
-            resources_dir = Path(__file__).parent / "resources"
-
         self.location_curator = LocationCurator(resources_dir=resources_dir)
         self.biome_curator = BiomeCurator(biome_keys=biome_keys)
+        self.date_curator = (
+            DateCurator(min_resolution=min_date_resolution) if curate_dates else None
+        )
 
     def curate_sample(self, sample_json: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -54,11 +56,19 @@ class SampleCurator:
         biome_result = self.biome_curator.curate_biome(cleaned_dict)
         result.update(biome_result)
 
+        # Date extraction (if enabled)
+        if self.date_curator:
+            date_result = self.date_curator.curate_date(cleaned_dict)
+            result.update(date_result)
+
         return result
 
 
 def curate_biosample(
-    input_data: Any, biome_keys: Optional[List[str]] = None
+    input_data: Any,
+    biome_keys: Optional[List[str]] = None,
+    curate_dates: bool = False,
+    min_date_resolution: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Curate one biosample
@@ -72,7 +82,11 @@ def curate_biosample(
     if not sample_json:
         return {}
 
-    curator = SampleCurator(biome_keys=biome_keys)
+    curator = SampleCurator(
+        biome_keys=biome_keys,
+        curate_dates=curate_dates,
+        min_date_resolution=min_date_resolution,
+    )
     return curator.curate_sample(sample_json)
 
 
